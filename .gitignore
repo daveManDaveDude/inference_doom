@@ -7,3 +7,5 @@ reference/chocolate-doom/
 
 # Local verification screenshots.
 build/*.png
+*.wad
+*.exe

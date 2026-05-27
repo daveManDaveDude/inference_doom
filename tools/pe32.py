@@ -11,6 +11,23 @@ SECTION_RVA = 0x1000
 SECTION_ALIGNMENT = 0x1000
 FILE_ALIGNMENT = 0x200
 GUI_SUBSYSTEM = 2
+RESOURCE_DIRECTORY_INDEX = 2
+RT_MANIFEST = 24
+APPLICATION_MANIFEST_ID = 1
+LANG_EN_US = 0x0409
+
+AS_INVOKER_MANIFEST = (
+    b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'
+    b'<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">\r\n'
+    b'  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">\r\n'
+    b"    <security>\r\n"
+    b"      <requestedPrivileges>\r\n"
+    b'        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>\r\n'
+    b"      </requestedPrivileges>\r\n"
+    b"    </security>\r\n"
+    b"  </trustInfo>\r\n"
+    b"</assembly>\r\n"
+)
 
 
 def align(value: int, alignment: int) -> int:
@@ -47,7 +64,11 @@ class PE32:
 
         self.import_directory_rva = 0
         self.import_directory_size = 0
+        self.resource_directory_rva = 0
+        self.resource_directory_size = 0
+        self._manifest_resource: bytes | None = None
         self._imports_emitted = False
+        self._resources_emitted = False
         self._built_image: bytes | None = None
 
     def tell(self) -> int:
@@ -113,6 +134,11 @@ class PE32:
             functions.append(function)
         return self.import_label(dll, function)
 
+    def add_as_invoker_manifest(self) -> None:
+        if self._built_image is not None:
+            raise ValueError("cannot add resources after build")
+        self._manifest_resource = AS_INVOKER_MANIFEST
+
     def build(self, entry_label: str) -> bytes:
         if self._built_image is not None:
             return self._built_image
@@ -120,6 +146,7 @@ class PE32:
             raise ValueError(f"entry label not defined: {entry_label}")
 
         self._emit_import_table()
+        self._emit_resource_table()
         self._apply_fixups()
 
         virtual_size = len(self.section)
@@ -205,6 +232,53 @@ class PE32:
 
         self.import_directory_rva = self.rva_of("__import_directory")
         self.import_directory_size = self.tell() - import_start
+
+    def _emit_resource_table(self) -> None:
+        if self._resources_emitted:
+            return
+        self._resources_emitted = True
+        if self._manifest_resource is None:
+            return
+
+        self.align_section(4)
+        resource_start = self.tell()
+        root_rva = self.section_rva + resource_start
+
+        root_offset = 0
+        type_dir_offset = 24
+        name_dir_offset = 48
+        data_entry_offset = 72
+        data_offset = 88
+
+        self.emit(self._resource_directory_header(id_entries=1))
+        self.emit_u32(RT_MANIFEST)
+        self.emit_u32(0x80000000 | type_dir_offset)
+
+        self.emit(self._resource_directory_header(id_entries=1))
+        self.emit_u32(APPLICATION_MANIFEST_ID)
+        self.emit_u32(0x80000000 | name_dir_offset)
+
+        self.emit(self._resource_directory_header(id_entries=1))
+        self.emit_u32(LANG_EN_US)
+        self.emit_u32(data_entry_offset)
+
+        manifest_rva = root_rva + data_offset
+        self.emit_u32(manifest_rva)
+        self.emit_u32(len(self._manifest_resource))
+        self.emit_u32(0)
+        self.emit_u32(0)
+
+        if self.tell() - resource_start != data_offset:
+            raise AssertionError("bad resource manifest layout")
+        self.emit(self._manifest_resource)
+        self.align_section(4)
+
+        self.resource_directory_rva = root_rva + root_offset
+        self.resource_directory_size = self.tell() - resource_start
+
+    @staticmethod
+    def _resource_directory_header(*, id_entries: int) -> bytes:
+        return struct.pack("<IIHHHH", 0, 0, 0, 0, 0, id_entries)
 
     def _apply_fixups(self) -> None:
         for fixup in self._fixups:
@@ -330,6 +404,9 @@ class PE32:
             if index == 1:
                 u32(self.import_directory_rva)
                 u32(self.import_directory_size)
+            elif index == RESOURCE_DIRECTORY_INDEX:
+                u32(self.resource_directory_rva)
+                u32(self.resource_directory_size)
             else:
                 u32(0)
                 u32(0)
