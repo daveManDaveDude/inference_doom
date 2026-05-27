@@ -165,10 +165,41 @@ Scope:
 - Replace stage03's accept-all bbox shortcut with source-guided
   view-frustum/bounding-box visibility.
 - Add the angle/projection table data needed by `R_CheckBBox`.
-- Continue to avoid texture columns, planes, sprites, and full wall rendering.
+- Initialize `solidsegs` with only the source sentinel ranges from
+  `R_ClearClipSegs`; real wall-span updates are planned for stage05.
+- Continue to avoid `R_AddLine`, texture columns, planes, sprites, and full
+  wall rendering.
 
 | Source routine | Source file | Starts at | Emitted label | Status | Validation target |
 | --- | --- | ---: | --- | --- | --- |
-| `R_PointToAngle` | `reference/chocolate-doom/src/doom/r_main.c` | 275 | `render_point_to_angle` | planned | Octant tests and pinned bbox corner angles match Python reference calculations. |
-| `R_InitTextureMapping` | `reference/chocolate-doom/src/doom/r_main.c` | 504 | `render_init_texture_mapping_tables` | planned/table-emitted | Selected `viewangletox`, `xtoviewangle`, and `clipangle` values match source-equivalent table generation. |
-| `R_CheckBBox` | `reference/chocolate-doom/src/doom/r_bsp.c` | 380 | `render_check_bbox` | planned | Pinned `MAP01` bbox-visible traversal counts differ deterministically from stage03 accept-all traversal. |
+| `SlopeDiv` | `reference/chocolate-doom/src/tables.c` | 41 | `render_slope_div` | planned | Threshold and clamping behavior match source for `R_PointToAngle` slope indexes. |
+| `tantoangle` / `finetangent` | `reference/chocolate-doom/src/tables.c` | 64 / 1867 | `render_angle_tables` | planned/table-emitted | Selected entries match the pinned Chocolate Doom tables used by `R_PointToAngle` and `R_InitTextureMapping`. |
+| `R_PointToAngle` | `reference/chocolate-doom/src/doom/r_main.c` | 275 | `render_point_to_angle` | planned | Octant tests, unsigned `angle_t` wraparound, and pinned bbox corner angles match Python reference calculations. |
+| `R_InitTextureMapping` | `reference/chocolate-doom/src/doom/r_main.c` | 539 | `render_init_texture_mapping_tables` | planned/table-emitted | Selected `viewangletox`, `xtoviewangle`, and `clipangle` values match source-equivalent table generation for `viewwidth=320`. |
+| `R_ClearClipSegs` | `reference/chocolate-doom/src/doom/r_bsp.c` | 244 | `render_clear_clipsegs` | planned | Initializes `solidsegs[0]`, `solidsegs[1]`, and `newend` with the source sentinel ranges. |
+| `R_CheckBBox` | `reference/chocolate-doom/src/doom/r_bsp.c` | 380 | `render_check_bbox` | planned | Pinned `MAP01` sentinel-only bbox traversal reports `BVN=559 BVSS=513 BVSEG=1709 BDEPTH=33 BFIRSTSS=227 BLASTSS=153 CULL=47`. |
+
+## Planned Stage: source_stage05_seg_clip_debug
+
+Output:
+
+```text
+build/source_stage05_seg_clip_debug.exe
+```
+
+Scope:
+
+- Reuse stage04 angle tables, `R_PointToAngle`, bbox visibility, and
+  `R_ClearClipSegs`.
+- Begin calling debug `R_AddLine` from visited subsectors.
+- Update `solidsegs` through the source-shaped solid/pass wall clipping
+  routines.
+- Record accepted wall column spans instead of building full drawsegs or
+  drawing textured wall columns.
+
+| Source routine | Source file | Starts at | Emitted label | Status | Validation target |
+| --- | --- | ---: | --- | --- | --- |
+| `R_AddLine` | `reference/chocolate-doom/src/doom/r_bsp.c` | 258 | `render_add_line_debug` | planned debug adaptation | Maps seg endpoints through `R_PointToAngle`/`viewangletox`, rejects backfaces/off-frustum spans, classifies solid vs pass walls, and calls the matching clip routine. |
+| `R_ClipSolidWallSegment` | `reference/chocolate-doom/src/doom/r_bsp.c` | 103 | `render_clip_solid_wall_segment` | planned | Insert, extend, and merge behavior mutates `solidsegs` like the source and records visible fragments. |
+| `R_ClipPassWallSegment` | `reference/chocolate-doom/src/doom/r_bsp.c` | 196 | `render_clip_pass_wall_segment` | planned | Finds visible fragments without mutating `solidsegs`. |
+| `R_StoreWallRange` | `reference/chocolate-doom/src/doom/r_segs.c` | 372 | `render_store_wall_range_debug` | planned debug adaptation | Records accepted `start..stop` spans and counters without calculating drawseg scale, textures, planes, or columns. |
