@@ -1,0 +1,9 @@
+# Downloaded legal game assets.
+third_party/freedoom/*.wad
+third_party/doom_shareware/*.wad
+
+# Compiled reference engine checkout and build output.
+reference/chocolate-doom/
+
+# Local verification screenshots.
+build/*.png
