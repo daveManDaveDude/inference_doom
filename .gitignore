@@ -9,3 +9,4 @@ reference/chocolate-doom/
 build/*.png
 *.wad
 *.exe
+**/__pycache__/**

@@ -175,6 +175,10 @@ def movzx_reg_word_ptr_reg_disp8(
     out.emit(bytes([0x0F, 0xB7, modrm(1, dst, base), displacement & 0xFF]))
 
 
+def movzx_reg_byte_ptr_reg(out, dst: str | int, base: str | int) -> None:
+    out.emit(bytes([0x0F, 0xB6, modrm(0, dst, base)]))
+
+
 def movsx_reg_word_ptr_reg(out, dst: str | int, base: str | int) -> None:
     out.emit(bytes([0x0F, 0xBF, modrm(0, dst, base)]))
 
@@ -258,6 +262,12 @@ def shrd_reg_reg_imm8(
     out, dst: str | int, src: str | int, value: int
 ) -> None:
     out.emit(bytes([0x0F, 0xAC, modrm(3, src, dst), value & 0xFF]))
+
+
+def shld_reg_reg_imm8(
+    out, dst: str | int, src: str | int, value: int
+) -> None:
+    out.emit(bytes([0x0F, 0xA4, modrm(3, src, dst), value & 0xFF]))
 
 
 def neg_reg(out, reg: str | int) -> None:
