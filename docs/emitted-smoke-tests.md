@@ -586,3 +586,941 @@ Stage10 preserves the stage09 direct wall-pixel counters, adds source-shaped
 composite column construction for the pinned one-sided midtexture candidates,
 draws supported two-sided upper/lower wall edge columns, records plane-mark
 handoff counts, and reports a deterministic runtime RGB pixel signature.
+
+## Source Stage 11 Visplanes Floor/Ceiling Debug
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage11_visplanes_floor_ceiling_debug.py
+```
+
+Expected output:
+
+```text
+build/source_stage11_visplanes_floor_ceiling_debug.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage11_visplanes_floor_ceiling_debug.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedClip = "*VN=697 VSS=698 VSEG=2233 BVN=559 BVSS=513 BVSEG=1709 CULL=47 CLN=72 CLSS=56 CLSEG=205 CLCULL=17 BF=82 OFF=17 ZPX=5 SOL=30 PASS=70 SPAN=86 NSEGS=1*"
+$ExpectedProjection = "*PRJ=86 MIND=2073560 MAXD=58720255 MINS=11702 MAXS=108495*"
+$ExpectedTexture = "*TEX=963 PN=1054 FLAT=246 DIRC=80797 COMPC=26323 FPTEX=850 LPTEX=13 EMID=1*"
+$ExpectedStage09 = "*DWSP=86 OPQSP=24 DCOL=297 DRAW=162 SKC=135 SKU=62 ZTEX=0 MASK=0 FTEX=850 FN=AQRUST08 FCOL=127 PIX=15508 SIG=2194105880*"
+$ExpectedStage10 = "*CMB=89 CMH=75 CMO=0 MCOL=2 MCEMP=133 UCOL=478 UCOMP=6 LCOL=138 PM=1659 F10TEX=850 F10N=AQRUST08 L10TEX=887 L10N=AQSECT08 TCOL=780 TPIX=37546 TSIG=4201955800*"
+$ExpectedStage11 = "*VP=38 VPF=30 VPR=88 VPS=8 VPO=0 CPM=727 FPM=932 FSP=169 FPIX=20791 SKYV=0 SKYC=0 SKYP=0 FSK=0 SPO=0 F11F=81 F11FN=SLIME14 C11F=113 C11N=FLOOR5_2 FSIG=2178063413*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedClip -and
+          $Process.MainWindowTitle -like $ExpectedProjection -and
+          $Process.MainWindowTitle -like $ExpectedTexture -and
+          $Process.MainWindowTitle -like $ExpectedStage09 -and
+          $Process.MainWindowTitle -like $ExpectedStage10 -and
+          $Process.MainWindowTitle -like $ExpectedStage11) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage11_visplanes_floor_ceiling_debug.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedClip -or
+    $Process.MainWindowTitle -notlike $ExpectedProjection -or
+    $Process.MainWindowTitle -notlike $ExpectedTexture -or
+    $Process.MainWindowTitle -notlike $ExpectedStage09 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage10 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage11) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage11_visplanes_floor_ceiling_debug.exe did not report the expected visplane/flat-span counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage11_visplanes_floor_ceiling_debug.exe did not close cleanly"
+}
+```
+
+Stage11 preserves the stage10 wall renderer and counters, consumes the
+stage10 plane-mark handoff through bounded visplanes, draws regular
+floor/ceiling flat spans from real 64x64 WAD flat lumps, counts skipped sky
+ceilings, and reports a deterministic wall+flat RGB signature.
+
+## Source Stage 12 Sky And Masked Midtextures Debug
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage12_sky_and_masked_midtextures_debug.py
+```
+
+Expected output:
+
+```text
+build/source_stage12_sky_and_masked_midtextures_debug.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage12_sky_and_masked_midtextures_debug.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedClip = "*VN=697 VSS=698 VSEG=2233 BVN=559 BVSS=513 BVSEG=1709 CULL=47 CLN=72 CLSS=56 CLSEG=205 CLCULL=17 BF=82 OFF=17 ZPX=5 SOL=30 PASS=70 SPAN=86 NSEGS=1*"
+$ExpectedProjection = "*PRJ=86 MIND=2073560 MAXD=58720255 MINS=11702 MAXS=108495*"
+$ExpectedTexture = "*TEX=963 PN=1054 FLAT=246 DIRC=80797 COMPC=26323 FPTEX=850 LPTEX=13 EMID=1*"
+$ExpectedStage09 = "*DWSP=86 OPQSP=24 DCOL=297 DRAW=162 SKC=135 SKU=62 ZTEX=0 MASK=0 FTEX=850 FN=AQRUST08 FCOL=127 PIX=15508 SIG=2194105880*"
+$ExpectedStage10 = "*CMB=89 CMH=75 CMO=0 MCOL=2 MCEMP=133 UCOL=478 UCOMP=6 LCOL=138 PM=1659 F10TEX=850 F10N=AQRUST08 L10TEX=887 L10N=AQSECT08 TCOL=780 TPIX=37546 TSIG=4201955800*"
+$ExpectedStage11 = "*VP=38 VPF=30 VPR=88 VPS=8 VPO=0 CPM=727 FPM=932 FSP=169 FPIX=20791 SKYV=0 SKYC=0 SKYP=0 FSK=0 SPO=0 F11F=81 F11FN=SLIME14 C11F=113 C11N=FLOOR5_2 FSIG=2178063413*"
+$ExpectedStage12 = "*SKCAND=40 MCAND=27 PROBE=1 PSKY=0 PMASK=0 SKYSEC=2 MSIDE=617 PVX=1771 PVY=-773 PVA=277 PSEC=196 SKYT=229 SKYN=SKY1 SCOL=32 SPIX=1280 MTEX=814 MN=AQMETL29 MCOL12=32 MPOST=32 MPIX=1888 SPR=0 SSK=0 S12SIG=2853564869*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedClip -and
+          $Process.MainWindowTitle -like $ExpectedProjection -and
+          $Process.MainWindowTitle -like $ExpectedTexture -and
+          $Process.MainWindowTitle -like $ExpectedStage09 -and
+          $Process.MainWindowTitle -like $ExpectedStage10 -and
+          $Process.MainWindowTitle -like $ExpectedStage11 -and
+          $Process.MainWindowTitle -like $ExpectedStage12) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage12_sky_and_masked_midtextures_debug.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedClip -or
+    $Process.MainWindowTitle -notlike $ExpectedProjection -or
+    $Process.MainWindowTitle -notlike $ExpectedTexture -or
+    $Process.MainWindowTitle -notlike $ExpectedStage09 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage10 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage11 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage12) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage12_sky_and_masked_midtextures_debug.exe did not report the expected sky/masked counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage12_sky_and_masked_midtextures_debug.exe did not close cleanly"
+}
+```
+
+Stage12 preserves the stage11 primary player-start renderer and counters. The
+primary view has no sky or masked midtexture work, so the executable also draws
+a deterministic MAP01 feature-probe proof using real pinned IWAD `SKY1` and
+`AQMETL29` columns, then reports a wall+flat+sky+masked RGB signature.
+
+## Source Stage 13 Things Sprites And Real Frame Setup
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage13_things_sprites_and_real_frame_setup.py
+```
+
+Expected output:
+
+```text
+build/source_stage13_things_sprites_and_real_frame_setup.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage13_things_sprites_and_real_frame_setup.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedClip = "*VN=697 VSS=698 VSEG=2233 BVN=559 BVSS=513 BVSEG=1709 CULL=47 CLN=72 CLSS=56 CLSEG=205 CLCULL=17 BF=82 OFF=17 ZPX=5 SOL=30 PASS=70 SPAN=86 NSEGS=1*"
+$ExpectedProjection = "*PRJ=86 MIND=2073560 MAXD=58720255 MINS=11702 MAXS=108495*"
+$ExpectedTexture = "*TEX=963 PN=1054 FLAT=246 DIRC=80797 COMPC=26323 FPTEX=850 LPTEX=13 EMID=1*"
+$ExpectedStage09 = "*DWSP=86 OPQSP=24 DCOL=297 DRAW=162 SKC=135 SKU=62 ZTEX=0 MASK=0 FTEX=850 FN=AQRUST08 FCOL=127 PIX=15508 SIG=2194105880*"
+$ExpectedStage10 = "*CMB=89 CMH=75 CMO=0 MCOL=2 MCEMP=133 UCOL=478 UCOMP=6 LCOL=138 PM=1659 F10TEX=850 F10N=AQRUST08 L10TEX=887 L10N=AQSECT08 TCOL=780 TPIX=37546 TSIG=4201955800*"
+$ExpectedStage11 = "*VP=38 VPF=30 VPR=88 VPS=8 VPO=0 CPM=727 FPM=932 FSP=169 FPIX=20791 SKYV=0 SKYC=0 SKYP=0 FSK=0 SPO=0 F11F=81 F11FN=SLIME14 C11F=113 C11N=FLOOR5_2 FSIG=2178063413*"
+$ExpectedStage12 = "*SKCAND=40 MCAND=27 PROBE=1 PSKY=0 PMASK=0 SKYSEC=2 MSIDE=617 PVX=1771 PVY=-773 PVA=277 PSEC=196 SKYT=229 SKYN=SKY1 SCOL=32 SPIX=1280 MTEX=814 MN=AQMETL29 MCOL12=32 MPOST=32 MPIX=1888 SPR=0 SSK=0 S12SIG=2853564869*"
+$ExpectedStage13 = "*TH=200 PST=4 RMO=120 UTH=2 SKSK=17 PSX=-192 PSY=-192 PSA=0 PSS=0 SPNAMES=138 SPLUMPS=1350 SPMISS=0 SPSEC=29 VIS=6 VISOV=0 SPROBE=0 FSTH=8 FSPR=60 FSN=BON1 FSF=0 FSPT=1009 FSPN=BON1A0 SPCOL=35 SPPOST=40 SPPIX=175 S13SIG=2904743961*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedClip -and
+          $Process.MainWindowTitle -like $ExpectedProjection -and
+          $Process.MainWindowTitle -like $ExpectedTexture -and
+          $Process.MainWindowTitle -like $ExpectedStage09 -and
+          $Process.MainWindowTitle -like $ExpectedStage10 -and
+          $Process.MainWindowTitle -like $ExpectedStage11 -and
+          $Process.MainWindowTitle -like $ExpectedStage12 -and
+          $Process.MainWindowTitle -like $ExpectedStage13) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage13_things_sprites_and_real_frame_setup.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedClip -or
+    $Process.MainWindowTitle -notlike $ExpectedProjection -or
+    $Process.MainWindowTitle -notlike $ExpectedTexture -or
+    $Process.MainWindowTitle -notlike $ExpectedStage09 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage10 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage11 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage12 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage13) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage13_things_sprites_and_real_frame_setup.exe did not report the expected THINGS/sprite counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage13_things_sprites_and_real_frame_setup.exe did not close cleanly"
+}
+```
+
+Stage13 preserves the stage12 renderer and counters, decodes real `MAP01`
+`THINGS`, seeds the fixed frame from the real player-one start, gathers primary
+frame sprites through source-shaped sector lists, draws real sprite patch posts
+through the masked-column primitive, and reports a deterministic stage13 RGB
+signature.
+
+## Source Stage 14 Game Loop Input Collision
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage14_game_loop_input_collision.py
+```
+
+Expected output:
+
+```text
+build/source_stage14_game_loop_input_collision.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage14_game_loop_input_collision.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage13 = "*TH=200 PST=4 RMO=120 UTH=2 SKSK=17 PSX=-192 PSY=-192 PSA=0 PSS=0 SPNAMES=138 SPLUMPS=1350 SPMISS=0 SPSEC=29 VIS=6 VISOV=0 SPROBE=0 FSTH=8 FSPR=60 FSN=BON1 FSF=0 FSPT=1009 FSPN=BON1A0 SPCOL=35 SPPOST=40 SPPIX=175 S13SIG=2904743961*"
+$ExpectedStage14 = "*BMW=20 BMH=27 TIC=8 I14X=-192 I14Y=-192 F14X=-172 F14Y=-194 F14A=3 F14SS=227 F14SEC=0 F14VZ=2753061 F14MX=183699 F14MY=-36831 ACPT=8 REJ14=0 LCHK=48 TCHK=0 BLI=8 BTI=16 LDUP=8 SDEF=0 CPROBE=1 CLINE=0 CBLK=1 CBLN=1 RLINK=8 S14SIG=3925602456*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage13 -and
+          $Process.MainWindowTitle -like $ExpectedStage14) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage14_game_loop_input_collision.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage13 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage14) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage14_game_loop_input_collision.exe did not report the expected movement/collision counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage14_game_loop_input_collision.exe did not close cleanly"
+}
+```
+
+Stage14 preserves the stage13 fixed renderer and counters, loads the real
+`MAP01` `BLOCKMAP`, advances an eight-tic deterministic local command script
+through source-shaped player/mobj/collision movement, relinks the moved player
+through sector/block state, records final `R_SetupFrame` fields, and reports a
+separate bounded MAP01 blocking-line probe.
+
+## Source Stage 15 Pickups Psprites Statusbar Shell
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage15_pickups_psprites_statusbar_shell.py
+```
+
+Expected output:
+
+```text
+build/source_stage15_pickups_psprites_statusbar_shell.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage15_pickups_psprites_statusbar_shell.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage13 = "*TH=200 PST=4 RMO=120 UTH=2 SKSK=17 PSX=-192 PSY=-192 PSA=0 PSS=0 SPNAMES=138 SPLUMPS=1350 SPMISS=0 SPSEC=29 VIS=6 VISOV=0 SPROBE=0 FSTH=8 FSPR=60 FSN=BON1 FSF=0 FSPT=1009 FSPN=BON1A0 SPCOL=35 SPPOST=40 SPPIX=175 S13SIG=2904743961*"
+$ExpectedStage14 = "*BMW=20 BMH=27 TIC=8 I14X=-192 I14Y=-192 F14X=-172 F14Y=-194 F14A=3 F14SS=227 F14SEC=0 F14VZ=2753061 F14MX=183699 F14MY=-36831 ACPT=8 REJ14=0 LCHK=48 TCHK=0 BLI=8 BTI=16 LDUP=8 SDEF=0 CPROBE=1 CLINE=0 CBLK=1 CBLN=1 RLINK=8 S14SIG=3925602456*"
+$ExpectedStage15 = "*PPROBE=2 PACC=2 PREM=2 P1=27 P1N=SHOT P2=41 P2N=CLIP HP=100 ARM=0 AT=0 CLIP=60 SHELL=8 WOWN=3 RDY=2 PEND=9 PSPST=18 PSPN=S_SGUN PSPT=1 STP=11 STCOL=469 STPIX=12533 WPN=SHTGA0 WPCOL=66 WPPIX=2083 MDEF=2 SNDDEF=2 S15SIG=2810145191*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage13 -and
+          $Process.MainWindowTitle -like $ExpectedStage14 -and
+          $Process.MainWindowTitle -like $ExpectedStage15) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage15_pickups_psprites_statusbar_shell.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage13 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage14 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage15) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage15_pickups_psprites_statusbar_shell.exe did not report the expected pickup/status counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage15_pickups_psprites_statusbar_shell.exe did not close cleanly"
+}
+```
+
+Stage15 preserves the stage14 movement/collision baseline, then runs a separate
+fixed MAP01 pickup proof through the special-touch path for shotgun mapthing
+`27` and clip mapthing `41`. Inventory mutates through source-shaped grant
+helpers, psprites raise the shotgun to `S_SGUN`, and real status/weapon patch
+columns report deterministic pixel counts and signature.
+
+## Source Stage 16 Active Monster Thinkers And Targeting
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage16_active_monster_thinkers_and_targeting.py
+```
+
+Expected output:
+
+```text
+build/source_stage16_active_monster_thinkers_and_targeting.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage16_active_monster_thinkers_and_targeting.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage13 = "*TH=200 PST=4 RMO=120 UTH=2 SKSK=17 PSX=-192 PSY=-192 PSA=0 PSS=0 SPNAMES=138 SPLUMPS=1350 SPMISS=0 SPSEC=29 VIS=6 VISOV=0 SPROBE=0 FSTH=8 FSPR=60 FSN=BON1 FSF=0 FSPT=1009 FSPN=BON1A0 SPCOL=35 SPPOST=40 SPPIX=175 S13SIG=2904743961*"
+$ExpectedStage14 = "*BMW=20 BMH=27 TIC=8 I14X=-192 I14Y=-192 F14X=-172 F14Y=-194 F14A=3 F14SS=227 F14SEC=0 F14VZ=2753061 F14MX=183699 F14MY=-36831 ACPT=8 REJ14=0 LCHK=48 TCHK=0 BLI=8 BTI=16 LDUP=8 SDEF=0 CPROBE=1 CLINE=0 CBLK=1 CBLN=1 RLINK=8 S14SIG=3925602456*"
+$ExpectedStage15 = "*PPROBE=2 PACC=2 PREM=2 P1=27 P1N=SHOT P2=41 P2N=CLIP HP=100 ARM=0 AT=0 CLIP=60 SHELL=8 WOWN=3 RDY=2 PEND=9 PSPST=18 PSPN=S_SGUN PSPT=1 STP=11 STCOL=469 STPIX=12533 WPN=SHTGA0 WPCOL=66 WPPIX=2083 MDEF=2 SNDDEF=2 S15SIG=2810145191*"
+$ExpectedStage16 = "*MCENS=18 ACTM=1 TADD=1 TRUN=13 MT16=37 MO16=28 M16N=SHOTGUY M16X=1752 M16Y=-936 M16SEC=58 M16BX=15 M16BY=6 MTIC0=3 LLOOK=1 LOOK=2 LFP=2 SIGHT=1 SOK=1 SNODE=77 SSUB=28 SLINE=5 TGT=1 ST0=207 STFN=S_SPOS_RUN1 STF=209 FTIC=3 CHDEF=1 SND16=1 ATK=0 DMG=0 KILL=0 S16SIG=249707937*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage13 -and
+          $Process.MainWindowTitle -like $ExpectedStage14 -and
+          $Process.MainWindowTitle -like $ExpectedStage15 -and
+          $Process.MainWindowTitle -like $ExpectedStage16) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage16_active_monster_thinkers_and_targeting.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage13 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage14 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage15 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage16) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage16_active_monster_thinkers_and_targeting.exe did not report the expected active-monster counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage16_active_monster_thinkers_and_targeting.exe did not close cleanly"
+}
+```
+
+Stage16 preserves the stage15 pickup/status/psprite baseline, then selects real
+MAP01 shotgun-guy mapthing `37` / mobj `28`, runs it as one active thinker for
+`13` bounded tics, advances `S_SPOS_STND -> S_SPOS_STND2 -> S_SPOS_RUN1`,
+acquires the player through `A_Look`, `P_LookForPlayers`, and a bounded
+REJECT+BSP `P_CheckSight` probe, and stops at a counted chase deferral with no
+attacks, damage, kills, or drops.
+
+## Source Stage 17 First Weapon Fire Damage And Death Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage17_first_weapon_fire_damage_and_death_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage17_first_weapon_fire_damage_and_death_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage17_first_weapon_fire_damage_and_death_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage13 = "*TH=200 PST=4 RMO=120 UTH=2 SKSK=17 PSX=-192 PSY=-192 PSA=0 PSS=0 SPNAMES=138 SPLUMPS=1350 SPMISS=0 SPSEC=29 VIS=6 VISOV=0 SPROBE=0 FSTH=8 FSPR=60 FSN=BON1 FSF=0 FSPT=1009 FSPN=BON1A0 SPCOL=35 SPPOST=40 SPPIX=175 S13SIG=2904743961*"
+$ExpectedStage14 = "*BMW=20 BMH=27 TIC=8 I14X=-192 I14Y=-192 F14X=-172 F14Y=-194 F14A=3 F14SS=227 F14SEC=0 F14VZ=2753061 F14MX=183699 F14MY=-36831 ACPT=8 REJ14=0 LCHK=48 TCHK=0 BLI=8 BTI=16 LDUP=8 SDEF=0 CPROBE=1 CLINE=0 CBLK=1 CBLN=1 RLINK=8 S14SIG=3925602456*"
+$ExpectedStage15 = "*PPROBE=2 PACC=2 PREM=2 P1=27 P1N=SHOT P2=41 P2N=CLIP HP=100 ARM=0 AT=0 CLIP=60 SHELL=8 WOWN=3 RDY=2 PEND=9 PSPST=18 PSPN=S_SGUN PSPT=1 STP=11 STCOL=469 STPIX=12533 WPN=SHTGA0 WPCOL=66 WPPIX=2083 MDEF=2 SNDDEF=2 S15SIG=2810145191*"
+$ExpectedStage16 = "*MCENS=18 ACTM=1 TADD=1 TRUN=13 MT16=37 MO16=28 M16N=SHOTGUY M16X=1752 M16Y=-936 M16SEC=58 M16BX=15 M16BY=6 MTIC0=3 LLOOK=1 LOOK=2 LFP=2 SIGHT=1 SOK=1 SNODE=77 SSUB=28 SLINE=5 TGT=1 ST0=207 STFN=S_SPOS_RUN1 STF=209 FTIC=3 CHDEF=1 SND16=1 ATK=0 DMG=0 KILL=0 S16SIG=249707937*"
+$ExpectedStage17 = "*ACENS=1 ATMO=0 TGMO=28 W17=2 WACT=A_FireShotgun CANG=0 AANG=254 TBRG=254 ADEL=254 CMISS=1 AIMFIX=1 S17LOS=1 SH0=8 SH1=7 PSP17=22 PSP17N=S_SGUN2 PSP17T=7 FLS=30 FLSN=S_SGUNFLASH1 FLT=3 AIM=5 LNA=7 PATH=12 LI=71 TI=33 HIT17=1 DEVT=1 DMG17=10 HP0=30 H17=20 ST17N=S_SPOS_PAIN ST17=220 PAIN=1 KILL17=0 DROPDEF=0 ST17PIX=12525 WP17PIX=2083 CHASEMV=0 LIVEIN=0 S17SIG=2157381017*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage13 -and
+          $Process.MainWindowTitle -like $ExpectedStage14 -and
+          $Process.MainWindowTitle -like $ExpectedStage15 -and
+          $Process.MainWindowTitle -like $ExpectedStage16 -and
+          $Process.MainWindowTitle -like $ExpectedStage17) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage17_first_weapon_fire_damage_and_death_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage13 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage14 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage15 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage16 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage17) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage17_first_weapon_fire_damage_and_death_probe.exe did not report the expected first-damage counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage17_first_weapon_fire_damage_and_death_probe.exe did not close cleanly"
+}
+```
+
+Stage17 preserves the stage16 active-monster baseline, then freezes the
+source-shaped player-to-target attack angle, advances the ready shotgun through
+the bounded fire psprite path, spends one shell, runs the hitscan line path, and
+mutates the selected shotgun guy from `30` health to `20` health through
+`P_DamageMobj`. The selected proof is nonlethal, so death, removal, and drop
+counters remain zero.
+
+## Source Stage 18 Post Damage Monster Movement And Chase Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage18_post_damage_monster_movement_and_chase_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage18_post_damage_monster_movement_and_chase_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage18_post_damage_monster_movement_and_chase_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage17 = "*ACENS=1 ATMO=0 TGMO=28 W17=2 WACT=A_FireShotgun CANG=0 AANG=254 TBRG=254 ADEL=254 CMISS=1 AIMFIX=1 S17LOS=1 SH0=8 SH1=7 PSP17=22 PSP17N=S_SGUN2 PSP17T=7 FLS=30 FLSN=S_SGUNFLASH1 FLT=3 AIM=5 LNA=7 PATH=12 LI=71 TI=33 HIT17=1 DEVT=1 DMG17=10 HP0=30 H17=20 ST17N=S_SPOS_PAIN ST17=220 PAIN=1 KILL17=0 DROPDEF=0 ST17PIX=12525 WP17PIX=2083 CHASEMV=0 LIVEIN=0 S17SIG=2157381017*"
+$ExpectedStage18 = "*M18R=1 M18TIC=1 MT18=37 MO18=28 M18N=SHOTGUY S18X=1752 S18Y=-936 S18BX=15 S18BY=6 S18STN=S_SPOS_PAIN S18ST=220 S18T=3 MX0=-22182 MY0=-78859 F18X=1751 F18Y=-938 F18BX=15 F18BY=6 F18STN=S_SPOS_PAIN F18ST=220 F18T=2 MX18=-20103 MY18=-71466 XY18=1 TRY18=1 MACC=1 MREJ=0 MLCHK=8 MTCHK=0 MBLI=1 MBTI=4 MLDUP=0 MBRL=1 MSRL=1 PAINTIC=1 P18DEF=0 CH18=0 NCD18=0 PMV18=0 ATK18=0 ATKEX18=0 S18SIG=1615679087*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage17 -and
+          $Process.MainWindowTitle -like $ExpectedStage18) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage18_post_damage_monster_movement_and_chase_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage17 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage18) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage18_post_damage_monster_movement_and_chase_probe.exe did not report the expected post-damage movement counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage18_post_damage_monster_movement_and_chase_probe.exe did not close cleanly"
+}
+```
+
+Stage18 preserves the stage17 first-damage baseline, then advances the damaged
+shotgun guy for one source-ordered `P_MobjThinker` tic. `P_XYMovement` services
+the stage17 thrust momentum before pain recovery, calls real MAP01
+`P_TryMove`/block iterators, accepts the move from `(1752,-936)` to
+`(1751,-938)`, applies friction to momentum, and leaves chase/attack execution
+deferred.
+
+## Source Stage 19 First Door Or Switch Sector Special Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage19_first_door_or_switch_sector_special_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage19_first_door_or_switch_sector_special_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage19_first_door_or_switch_sector_special_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage17 = "*ACENS=1 ATMO=0 TGMO=28 W17=2 WACT=A_FireShotgun CANG=0 AANG=254 TBRG=254 ADEL=254 CMISS=1 AIMFIX=1 S17LOS=1 SH0=8 SH1=7 PSP17=22 PSP17N=S_SGUN2 PSP17T=7 FLS=30 FLSN=S_SGUNFLASH1 FLT=3 AIM=5 LNA=7 PATH=12 LI=71 TI=33 HIT17=1 DEVT=1 DMG17=10 HP0=30 H17=20 ST17N=S_SPOS_PAIN ST17=220 PAIN=1 KILL17=0 DROPDEF=0 ST17PIX=12525 WP17PIX=2083 CHASEMV=0 LIVEIN=0 S17SIG=2157381017*"
+$ExpectedStage18 = "*M18R=1 M18TIC=1 MT18=37 MO18=28 M18N=SHOTGUY S18X=1752 S18Y=-936 S18BX=15 S18BY=6 S18STN=S_SPOS_PAIN S18ST=220 S18T=3 MX0=-22182 MY0=-78859 F18X=1751 F18Y=-938 F18BX=15 F18BY=6 F18STN=S_SPOS_PAIN F18ST=220 F18T=2 MX18=-20103 MY18=-71466 XY18=1 TRY18=1 MACC=1 MREJ=0 MLCHK=8 MTCHK=0 MBLI=1 MBTI=4 MLDUP=0 MBRL=1 MSRL=1 PAINTIC=1 P18DEF=0 CH18=0 NCD18=0 PMV18=0 ATK18=0 ATKEX18=0 S18SIG=1615679087*"
+$ExpectedStage19 = "*S19LINE=332 SIDE=0 S19SEC=56 S19SPEC=117 S19TEX=BIGDOOR1 PROBE19=1 U19X=1792 U19Y=-160 U19A=0 P18USE=0 P18DIST=456 PATH19=1 BLK19=1 LI19=5 TRV19=1 USE19=1 BACK19=0 TERM19=1 VD19=1 DTH19=1 TOP19=108 F19=16 C190=16 C191=24 DIR19=1 SPD19=8 TWAIT19=150 TD19=1 MP19=1 MPR19=0 PAST19=0 CRUSH19=0 SND19=1 SWDEF19=0 BTNDEF19=0 GSPEC19=0 GDOOR19=0 GSECT19=0 AUD19=1 LIVE19=0 S19SIG=2088411722*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage17 -and
+          $Process.MainWindowTitle -like $ExpectedStage18 -and
+          $Process.MainWindowTitle -like $ExpectedStage19) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage19_first_door_or_switch_sector_special_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage17 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage18 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage19) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage19_first_door_or_switch_sector_special_probe.exe did not report the expected manual door mutation counts"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage19_first_door_or_switch_sector_special_probe.exe did not close cleanly"
+}
+```
+
+Stage19 preserves the stage18 post-damage movement baseline, then activates real
+MAP01 linedef `332` from a fixed front-side use probe. The bounded route reaches
+`P_UseSpecialLine`, `EV_VerticalDoor`, `P_FindLowestCeilingSurrounding`,
+`T_VerticalDoor`, and `T_MovePlane`, spawns one table-emitted blazing-door
+thinker record, and mutates sector `56` ceiling from `16` to `24` map units.
+Switch/button behavior, broad special systems, real sound output, and live input
+remain counted boundaries.
+
+## Source Stage 20 Audio Channels And Deferred Sound Playback
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage20_audio_channels_and_deferred_sound_playback.py
+```
+
+Expected output:
+
+```text
+build/source_stage20_audio_channels_and_deferred_sound_playback.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage20_audio_channels_and_deferred_sound_playback.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19LINE=332 SIDE=0 S19SEC=56 S19SPEC=117 S19TEX=BIGDOOR1 PROBE19=1 U19X=1792 U19Y=-160 U19A=0 P18USE=0 P18DIST=456 PATH19=1 BLK19=1 LI19=5 TRV19=1 USE19=1 BACK19=0 TERM19=1 VD19=1 DTH19=1 TOP19=108 F19=16 C190=16 C191=24 DIR19=1 SPD19=8 TWAIT19=150 TD19=1 MP19=1 MPR19=0 PAST19=0 CRUSH19=0 SND19=1 SWDEF19=0 BTNDEF19=0 GSPEC19=0 GDOOR19=0 GSECT19=0 AUD19=1 LIVE19=0 S19SIG=2088411722*"
+$ExpectedStage20 = "*S20CALL=1 S20LINE=332 S20SEC=56 S20ID=88 S20N=bdopn S20PRI=100 CHS20=8 CH20=0 ORG20=56 O20X=1832 O20Y=-160 L20X=1792 L20Y=-160 DIST20=40 VOL20=64 SEP20=129 P200=127 RND20=8 P201=135 STOP20=1 SAME20=0 GET20=1 FREE20=1 REP20=0 NOCH20=0 USE200=-1 USE201=1 LDEF20=1 LUMP20=0 IST20=1 H20=0 PLAY20=0 AUD20=1 MIX20=0 MUS20=0 ALLS20=0 CACH20=0 S20SIG=3226031347*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage20_audio_channels_and_deferred_sound_playback.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage20_audio_channels_and_deferred_sound_playback.exe did not report the expected sound-channel state"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage20_audio_channels_and_deferred_sound_playback.exe did not close cleanly"
+}
+```
+
+Stage20 preserves the stage19 manual door mutation, then turns the reached
+`EV_VerticalDoor -> S_StartSound(&sec->soundorg, sfx_bdopn)` boundary into one
+source-shaped sound channel record. It resolves `S_sfx[sfx_bdopn]` from source
+metadata, computes sector-origin volume/separation and deterministic pitch,
+selects channel `0`, increments usefulness, records the deferred lump/platform
+sound calls, and still produces no speaker output.
+
+## Source Stage 21 Door Thinker Ticker And Special Update Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage21_door_thinker_ticker_and_special_update_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage21_door_thinker_ticker_and_special_update_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage21_door_thinker_ticker_and_special_update_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19LINE=332 SIDE=0 S19SEC=56 S19SPEC=117*S19SIG=2088411722*"
+$ExpectedStage20 = "*S20CALL=1 S20LINE=332 S20SEC=56 S20ID=88 S20N=bdopn*S20SIG=3226031347*"
+$ExpectedStage21 = "*S21SEC=56 CAP21=1 ADD21=1 NODE21=1 LNK21=4 PTIC21=2 RUN21=2 ITER21=2 DISP21=2 NEXT21=2 TVD21=2 MP21=2 C210=16 C211=24 C212=32 TOP21=108 SPD21=8 DIR21=1 WAIT21=150 TCNT21=0 PLY21=2 UPD21=2 RESP21=2 LT210=0 LT211=2 ORDER21=1 PAUSE21=0 MENU21=0 ANIM21=0 SCRL21=0 BTN21=0 EXIT21=0 REM21=0 CLOSE21=0 SND21=0 AUD21=0 MIX21=0 MUS21=0 LIVE21=0 S21SIG=1770773845*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20 -and
+          $Process.MainWindowTitle -like $ExpectedStage21) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage21_door_thinker_ticker_and_special_update_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage21) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage21_door_thinker_ticker_and_special_update_probe.exe did not report the expected thinker ticker proof"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage21_door_thinker_ticker_and_special_update_probe.exe did not close cleanly"
+}
+```
+
+Stage21 preserves the stage20 sound-channel proof and stage19's direct manual
+door tic, then clones the selected sector `56` door state into a bounded normal
+ticker proof. Two source-ordered `P_Ticker` calls dispatch one door thinker via
+`P_RunThinkers`, advance `T_VerticalDoor -> T_MovePlane`, and mutate the cloned
+ceiling sequence `16 -> 24 -> 32`. `P_UpdateSpecials` and
+`P_RespawnSpecials` are present as counted guards only.
+
+## Source Stage 22 First Switch Texture And Tagged Door Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage22_first_switch_texture_and_tagged_door_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage22_first_switch_texture_and_tagged_door_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage22_first_switch_texture_and_tagged_door_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19LINE=332*S19SIG=2088411722*"
+$ExpectedStage20 = "*S20CALL=1*S20SIG=3226031347*"
+$ExpectedStage21 = "*S21SEC=56*S21SIG=1770773845*"
+$ExpectedStage22 = "*S22LINE=839 S22SPEC=103 TAG22=4 SIDE22=0 RSID22=1289 LSID22=1290 SLOT22=2 TEX220=SW2COMP TEX221=SW1COMP PAIR22=6 SWI22=13 SPC221=0 PATH22=1 LI22=7 TRV22=2 EV22=1 TFIND22=1 TITER22=211 TSEC22=208 F22=-80 C220=-80 LOW22=0 TOP22=-4 DIR22=1 SPD22=2 WAIT22=150 ADD22=1 PTIC22=1 TVD22=1 MP22=1 C221=-78 UPD22=1 BTN22=0 REM22=0 CLOSE22=0 SWSND22=1 AUD22=0 GEN22=0 S22SIG=2207028069*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20 -and
+          $Process.MainWindowTitle -like $ExpectedStage21 -and
+          $Process.MainWindowTitle -like $ExpectedStage22) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage22_first_switch_texture_and_tagged_door_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage21 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage22) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage22_first_switch_texture_and_tagged_door_probe.exe did not report the expected switch/tagged-door proof"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage22_first_switch_texture_and_tagged_door_probe.exe did not close cleanly"
+}
+```
+
+Stage22 preserves the stage21 ticker proof, then activates real MAP01 linedef
+`839` through the bounded source-shaped use-line route. It mutates front lower
+texture `SW2COMP -> SW1COMP`, clears the one-shot line special, resolves tag
+`4` to sector `208`, spawns one `vld_open` door thinker, and advances the new
+tagged door ceiling from `-80` to `-78` in one normal ticker tic. Reusable
+button restoration, broad specials, broad doors/switches, and real speaker
+playback remain deferred.
+
+## Source Stage 23 First Button Timer Restore Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage23_first_button_timer_restore_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage23_first_button_timer_restore_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage23_first_button_timer_restore_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19LINE=332*S19SIG=2088411722*"
+$ExpectedStage20 = "*S20CALL=1*S20SIG=3226031347*"
+$ExpectedStage21 = "*S21SEC=56*S21SIG=1770773845*"
+$ExpectedStage22 = "*S22LINE=839*S22SIG=2207028069*"
+$ExpectedStage23 = "*S23MAP=15 S23LINE=3452 S23SPEC=61 TAG23=24 SIDE23=0 RSID23=4798 LSID23=65535 FSEC23=548 SLOT23=1 TEX230=SW1COMP TEX231=SW2COMP TEX232=SW1COMP PAIR23=6 SWI23=12 SPC231=61 BSLOT23=0 BOLD23=292 BT230=35 BT231=0 BDUP23=-1 UPD23=35 BDEC23=35 BREST23=1 BCLR23=1 BOFFSND23=1 TSEC23=530 F23=-64 C230=48 LOW23=56 TOP23=52 DIR23=1 SPD23=2 WAIT23=150 PTIC23=35 TVD23=3 MP23=3 REM23=1 LT23=35 ORDER23=1 MAP01BTN23=0 CENS23=72 DOORBTN23=8 AUD23=0 GEN23=0 FALL23=0 S24ABS=1 S23SIG=3216085132*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20 -and
+          $Process.MainWindowTitle -like $ExpectedStage21 -and
+          $Process.MainWindowTitle -like $ExpectedStage22 -and
+          $Process.MainWindowTitle -like $ExpectedStage23) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage23_first_button_timer_restore_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage21 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage22 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage23) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage23_first_button_timer_restore_probe.exe did not report the expected button restore proof"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage23_first_button_timer_restore_probe.exe did not close cleanly"
+}
+```
+
+Stage23 preserves the stage22 switch/tagged-door proof, then activates real
+MAP15 linedef `3452` through the selected source-shaped reusable button route.
+It mutates front middle texture `SW1COMP -> SW2COMP`, preserves line special
+`61`, allocates one button slot with timer `35`, resolves tag `24` to sector
+`530`, and runs bounded ticker/update-special tics until the button restores
+`SW1COMP` and clears its slot. Real speaker playback, generalized specials,
+generalized floors/plats, and map progression remain deferred.
+
+## Source Stage 24 First Floor Sector Special Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage24_first_floor_sector_special_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage24_first_floor_sector_special_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage24_first_floor_sector_special_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19LINE=332*S19SIG=2088411722*"
+$ExpectedStage20 = "*S20CALL=1*S20SIG=3226031347*"
+$ExpectedStage21 = "*S21SEC=56*S21SIG=1770773845*"
+$ExpectedStage22 = "*S22LINE=839*S22SIG=2207028069*"
+$ExpectedStage23 = "*S23LINE=3452*S23SIG=3216085132*"
+$ExpectedStage24 = "*S24LINE=391 S24SPEC=60 TAG24=6 SIDE24=0 RSID24=564 LSID24=-1 FSEC24=59 SLOT24=1 TEX240=SW1BROWN TEX241=SW2BROWN TEX242=SW1BROWN PAIR24=4 SWI24=8 SPC241=60 BSLOT24=0 BT240=35 BT241=0 BREST24=1 BCLR24=1 EVF24=1 TFIND24=2 TITER24=648 TSEC24=57 F240=16 F241=-48 C24=144 SSPEC24=0 LOWF24=-48 DEST24=-48 DIR24=-1 SPD24=1 ADD24=1 PTIC24=66 TMF24=65 MP24=65 FMUT24=64 PAST24=1 REM24=1 LREM24=1 MSND24=9 STOP24=1 LT24=66 ORDER24=1 AUD24=0 GENF24=1 GPLAT24=1 GCEIL24=1 S25ABS=1 S24SIG=1919312263*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20 -and
+          $Process.MainWindowTitle -like $ExpectedStage21 -and
+          $Process.MainWindowTitle -like $ExpectedStage22 -and
+          $Process.MainWindowTitle -like $ExpectedStage23 -and
+          $Process.MainWindowTitle -like $ExpectedStage24) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage24_first_floor_sector_special_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage21 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage22 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage23 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage24) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage24_first_floor_sector_special_probe.exe did not report the expected floor special proof"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage24_first_floor_sector_special_probe.exe did not close cleanly"
+}
+```
+
+Stage24 preserves the stage23 reusable-button proof, then activates real MAP11
+linedef `391` through the selected source-shaped reusable floor-button route.
+It mutates front middle texture `SW1BROWN -> SW2BROWN`, preserves line special
+`60`, allocates one button slot with timer `35`, resolves tag `6` to sector
+`57`, and runs bounded ticker/update-special tics until the button restores and
+the floor thinker moves sector `57` from `16` to `-48`, fires the pstop
+boundary, and lazily unlinks. Real speaker playback, generalized floors/plats,
+ceilings/crushers, stairs, donuts, and map progression remain deferred.
+
+## Source Stage 25 First Platform Lift Cycle Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage25_first_platform_lift_cycle_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage25_first_platform_lift_cycle_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage25_first_platform_lift_cycle_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19LINE=332*S19SIG=2088411722*"
+$ExpectedStage20 = "*S20CALL=1*S20SIG=3226031347*"
+$ExpectedStage21 = "*S21SEC=56*S21SIG=1770773845*"
+$ExpectedStage22 = "*S22LINE=839*S22SIG=2207028069*"
+$ExpectedStage23 = "*S23LINE=3452*S23SIG=3216085132*"
+$ExpectedStage24 = "*S24LINE=391*S24SIG=1919312263*"
+$ExpectedStage25 = "*S25LINE=2304 S25SPEC=62 TAG25=26 SIDE25=0 RSID25=3005 LSID25=3004 FSEC25=228 SLOT25=2 TEX250=SW1STRTN TEX251=SW2STRTN TEX252=SW1STRTN PAIR25=18 SWI25=36 SPC251=62 BSLOT25=0 BT250=35 BT251=0 BREST25=1 BCLR25=1 EVP25=1 TFIND25=2 TITER25=863 TSEC25=77 F250=-8 F251=-8 C25=256 SSPEC25=0 LOW25=-64 HIGH25=-8 STAT25=1 SPD25=4 WAIT25=105 ASLOT25=0 ADD25=1 PTIC25=136 TPL25=135 MP25=30 PMUT25=28 PAST25=2 WT25=2 WDEC25=105 UP25=1 AREM25=1 ACLR25=1 LREM25=1 PSTART25=2 PSTOP25=2 LT25=136 ORDER25=1 AUD25=0 GENF25=1 GPLAT25=1 GCEIL25=1 S26ABS=1 S25SIG=1688844032*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20 -and
+          $Process.MainWindowTitle -like $ExpectedStage21 -and
+          $Process.MainWindowTitle -like $ExpectedStage22 -and
+          $Process.MainWindowTitle -like $ExpectedStage23 -and
+          $Process.MainWindowTitle -like $ExpectedStage24 -and
+          $Process.MainWindowTitle -like $ExpectedStage25) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage25_first_platform_lift_cycle_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage21 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage22 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage23 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage24 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage25) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage25_first_platform_lift_cycle_probe.exe did not report the expected platform lift cycle proof"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage25_first_platform_lift_cycle_probe.exe did not close cleanly"
+}
+```
+
+Stage25 preserves the stage24 floor proof, then activates real MAP12 linedef
+`2304` through the selected source-shaped reusable platform-button route. It
+mutates front lower texture `SW1STRTN -> SW2STRTN`, preserves line special
+`62`, allocates one button slot with timer `35`, resolves tag `26` to sector
+`77`, allocates activeplats slot `0`, and runs bounded ticker/update-special
+tics until the button restores and the platform moves `-8 -> -64`, waits,
+restarts upward, returns `-64 -> -8`, clears activeplats and sector
+`specialdata`, fires the deferred pstart/pstop boundaries, and lazily unlinks.
+Real speaker playback, generalized platforms/lifts, generalized floors,
+ceilings/crushers, stairs, donuts, and map progression remain deferred.

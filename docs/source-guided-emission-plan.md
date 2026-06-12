@@ -39,6 +39,11 @@ Use `docs/source-guided-ways-of-working.md` as the clean-context quick
 reference. In particular, every slice must end with a runnable executable and a
 scripted smoke test that launches it and verifies the intended behavior.
 
+This plan is intentionally agile. The end goal stays fixed: build Doom from
+source behavior without a compiler. The exact next slice may be refined after
+each release when the source, pinned WAD data, or emitted runtime proves that a
+smaller or differently ordered step would be more honest.
+
 ## Rules
 
 1. Do not use a compiler, assembler, linker, CMake, MSBuild, MinGW, NASM, or
@@ -50,16 +55,17 @@ scripted smoke test that launches it and verifies the intended behavior.
 5. Keep the released debug stages as proofs, but do not build the next phase by
    piling more special cases into them.
 
-## Current Baseline: source_stage10_composite_two_sided_wall_edges_debug
+## Current Baseline: source_stage25_first_platform_lift_cycle_probe
 
 The source-guided line now covers WAD/map setup, BSP setup structures,
 source-ordered BSP traversal, Doom-shaped bbox/frustum visibility, and live
 emitted x86 mutable wall-span clipping for the pinned `MAP01` player start.
 It turns the accepted live wall spans into source-shaped projection records
 using Doom fixed-point distance and scale math, connects those projected spans
-to real Doom texture and flat metadata, and now draws real WAD wall texture
-pixels from direct columns, source-shaped composite columns, and supported
-two-sided upper/lower wall edges.
+to real Doom texture and flat metadata, draws real WAD wall texture pixels
+from direct columns, source-shaped composite columns, and supported two-sided
+upper/lower wall edges, and now draws regular floor/ceiling flat spans from
+real 64x64 WAD flat lumps.
 
 Stage08 parses and validates `PNAMES`, `TEXTURE1`, optional `TEXTURE2`, and the
 flat lump range in Python, then emits bounded source-shaped metadata tables into
@@ -75,10 +81,194 @@ small runtime x86 column loop and reports a deterministic framebuffer
 signature, while Python continues to perform bounded source-guided WAD parsing
 and table emission for the fixed proof.
 
+Stage11 consumes those plane-mark records through bounded padded
+`visplane_t`-shaped records, runs source-shaped `R_FindPlane`,
+`R_CheckPlane`, `R_MakeSpans`, and `R_MapPlane` references for the fixed view,
+then emits span commands and real flat lump bytes for an emitted x86
+`R_DrawSpan` loop.
+
+Stage12 preserves that primary player-start wall/flat view and adds the first
+sky and masked-midtexture proof. Because the primary pinned view has no visible
+sky or masked midtexture columns, Stage12 freezes a deterministic secondary
+MAP01 feature probe selected from real geometry: sky sector `2` and masked
+sidedef `617` at `PVX=1771 PVY=-773 PVA=277 PSEC=196`. It draws `SKY1` sky
+columns through the `R_DrawPlanes` sky branch, then draws `AQMETL29` masked
+midtexture posts after walls/flats through the shared masked-column primitive.
+
+Stage13 keeps the released stage12 renderer intact, decodes real `MAP01`
+`THINGS`, creates minimal render-facing `mobj_t` / `player_t` records, seeds
+the fixed frame from the real player-one start at `(-192, -192)`, initializes
+reachable sprite metadata from `info.c` and WAD sprite lumps, gathers bounded
+vissprites through the primary `R_Subsector -> R_AddSprites(frontsector)`
+sector set, sorts them, and draws real sprite patch posts after the stage12
+path through the shared masked-column primitive. The primary frame naturally
+contains sprite proof work, so no secondary sprite probe is needed.
+
+Stage14 preserves the full stage13 renderer as a no-script baseline, loads the
+real `MAP01` `BLOCKMAP`, links the player and inert solid things into
+source-shaped sector/block lists, runs an eight-tic deterministic `ticcmd_t`
+script from the real player start, advances the local player through the
+narrowed `G_Ticker -> P_Ticker -> P_PlayerThink -> P_MovePlayer -> P_Thrust ->
+P_XYMovement -> P_TryMove/P_CheckPosition` path, and records the final
+`R_SetupFrame` fields. The main script proves accepted movement; a separate
+bounded MAP01 collision probe proves a blocking line through the real blockmap.
+
+Stage15 preserves stage14 as the movement baseline, then runs a separate fixed
+MAP01 pickup proof selected from a source-shaped pickup census. The proof
+touches the real shotgun at mapthing `27` and the real clip at mapthing `41`
+through `PIT_CheckThing -> P_TouchSpecialThing`, mutates player inventory via
+source-shaped grant helpers, raises the shotgun through `P_SetupPsprites` /
+`P_MovePsprites`, and draws a compact real-patch status strip plus shotgun
+psprite shell.
+
+Stage16 keeps the stage15 pickup/status proof stable and adds the first bounded
+active monster thinker. A source-shaped MAP01 monster census selects the real
+shotgun guy at mapthing `37` / mobj `28`; the proof links it into a Doom-shaped
+thinker list, advances `P_MobjThinker` / `P_SetMobjState` for 13 bounded tics,
+dispatches `A_Look`, acquires the player through `P_LookForPlayers` and a
+bounded REJECT+BSP `P_CheckSight` probe, and stops when the first `A_Chase`
+action is reached as a counted deferred boundary.
+
+Stage17 keeps the stage16 active-monster proof stable and adds the first
+bounded player weapon damage proof. The attack census records that the player's
+current angle `0` does not hit the selected shotgun guy, freezes the documented
+player-to-target attack angle `254` degrees, advances the ready shotgun psprite
+to `A_FireShotgun`, spends one shell, and runs the bounded hitscan route until
+one pellet mutates the selected monster through `P_DamageMobj`.
+
+Stage18 keeps the stage17 damage proof stable and adds the first bounded
+post-damage monster movement proof. A source-shaped census starts from the
+actual damaged shotgun guy left by stage17: `S_SPOS_PAIN`, `tics=3`, target
+`0`, threshold `100`, and thrust momentum `(-22182,-78859)`. Source order
+services `P_XYMovement` before pain recovery, so the released proof performs
+one real MAP01 `P_TryMove` momentum step, accepts the move to `(1751,-938)`,
+relinks the monster, applies friction, and leaves chase/attack execution
+deferred.
+
+Stage19 keeps the stage18 post-damage movement proof stable and adds the first
+bounded environment-state mutation. A MAP01 special census selects real manual
+door linedef `332`, special `117`, visible `BIGDOOR1`, from a fixed front-side
+use probe at `(1792,-160)` facing east. The source-shaped route reaches
+`P_UseLines -> P_PathTraverse -> PTR_UseTraverse -> P_UseSpecialLine ->
+EV_VerticalDoor`, targets sector `56` through `line->sidenum[side^1]`, computes
+`P_FindLowestCeilingSurrounding=112` and `topheight=108`, table-emits one
+bounded door thinker record, then runs one `T_VerticalDoor -> T_MovePlane` tic
+that mutates the sector ceiling from `16` to `24` map units.
+
+Stage20 keeps the stage19 manual-door proof stable and converts the reached
+`EV_VerticalDoor -> S_StartSound(&sec->soundorg, sfx_bdopn)` boundary into
+deterministic source-shaped sound-channel state. It parses `sounds.h` /
+`sounds.c` metadata for `sfx_bdopn`, computes sector `56`'s centered
+`soundorg` from the `P_GroupLines` sector bounding-box rule, applies bounded
+`S_AdjustSoundParams`, deterministic `M_Random` pitch variation, `S_StopSound`,
+`S_GetChannel`, usefulness/lump bookkeeping, and writes one record in a bounded
+8-channel table while keeping platform speaker output deferred.
+
+Stage21 keeps both stage20 and stage19 stable, then clones the selected manual
+door's just-created state into an isolated normal ticker proof. It initializes a
+bounded `thinkercap`, appends one door thinker node, and runs two source-ordered
+`P_Ticker` tics through `P_RunThinkers -> T_VerticalDoor -> T_MovePlane`,
+mutating the cloned sector `56` ceiling from `16 -> 24 -> 32`. The ticker also
+reports explicit player-think, `P_UpdateSpecials`, `P_RespawnSpecials`, and
+`leveltime++` ordering guards while keeping animation, scroller, button, exit,
+respawn, and new sound/device work absent or deferred.
+
+Stage22 keeps stage21 stable, then proves the first source-shaped switch
+texture mutation and tagged-door activation. A fixed front-side `P_UseLines`
+probe at `(216,-584)` facing south reaches real MAP01 linedef `839`, special
+`103`, tag `4`, front sidedef `1289`, and lower texture `SW2COMP`. The bounded
+route follows `P_UseSpecialLine -> EV_DoDoor(vld_open) ->
+P_FindSectorFromLineTag -> P_AddThinker -> P_ChangeSwitchTexture`, mutates
+`SW2COMP -> SW1COMP`, clears the one-shot line special, spawns one sector `208`
+door thinker with topheight `-4`, and runs one ticker tic from ceiling
+`-80 -> -78` while leaving button restore and generalized specials deferred.
+
+Stage23 keeps stage22 stable, then proves the reusable-button half of
+`P_ChangeSwitchTexture` on a real secondary-map candidate. The selected proof
+uses real `MAP15` linedef `3452`, special `61`, tag `24`, front sidedef `4798`,
+and middle texture `SW1COMP`. The bounded route reaches
+`P_UseSpecialLine -> EV_DoDoor(vld_open) -> P_ChangeSwitchTexture(line, 1) ->
+P_StartButton`, mutates `SW1COMP -> SW2COMP`, preserves the line special,
+allocates one button slot with old texture `SW1COMP` and timer `35`, then runs
+35 source-ordered ticker/update-special tics until `P_UpdateSpecials` restores
+`SW1COMP`, counts the switch-off sound boundary, and clears the slot.
+
+Stage24 keeps stage23 stable, then proves the first source-shaped floor thinker
+on real `MAP11` linedef `391`, special `60`, tag `6`, front sidedef `564`, and
+middle texture `SW1BROWN`. The bounded route reaches
+`P_UseSpecialLine -> EV_DoFloor(lowerFloorToLowest) ->
+P_FindSectorFromLineTag -> P_FindLowestFloorSurrounding -> P_AddThinker`,
+starts the reusable `SW1BROWN -> SW2BROWN -> SW1BROWN` button lifecycle, and
+runs a bounded ticker window through `T_MoveFloor -> T_MovePlane` until target
+sector `57` moves from floor `16` to `-48`, fires the strict
+past-destination pstop boundary, and lazily unlinks the thinker.
+
+Stage25 keeps stage24 stable, then proves the first source-shaped platform/lift
+cycle on real `MAP12` linedef `2304`, special `62`, tag `26`, front sidedef
+`3005`, back sidedef `3004`, and lower texture `SW1STRTN`. The bounded route
+reaches `P_UseSpecialLine -> EV_DoPlat(downWaitUpStay) ->
+P_FindSectorFromLineTag -> P_FindLowestFloorSurrounding -> P_AddThinker ->
+P_AddActivePlat`, starts the reusable `SW1STRTN -> SW2STRTN -> SW1STRTN`
+button lifecycle, and runs a 136-tic ticker window through
+`T_PlatRaise -> T_MovePlane`: sector `77` moves down from `-8` to `-64`, waits
+105 platform dispatches, restarts upward, returns to `-8`, clears
+`activeplats[]` and sector `specialdata`, marks the thinker for lazy removal,
+and proves the final lazy unlink.
+
 The renderer is still a debug renderer. It knows which texture metadata belongs
-to visible spans and can draw deterministic wall columns, but it still stops
-before flat-span drawing, sky drawing, masked/translucent wall drawing,
-sprites, actors, game/player movement, and the full game loop.
+to visible spans and can draw deterministic wall columns and regular flat
+spans, and it now proves sky, masked-wall, real sprite pixel paths, and the
+first source-shaped local player movement/collision, inventory/status mutation,
+active monster thinker/targeting, first weapon damage, first post-damage
+monster movement, manual door sector mutation, first sound-channel state,
+normal door ticker, first switch/tagged-door, and first reusable-button timer
+restore slices, plus the first selected lowerFloorToLowest floor thinker. It
+still stops before generalized combat, generalized monster AI/chase,
+generalized specials, generalized doors/switches, generalized floor/plat
+systems beyond the selected floor path, real audio output, generalized UI, and
+a full generalized game loop.
+
+The next milestone should keep the same discipline: port source behavior in a
+small runnable slice, not a generic rewrite and not a compiled-code shortcut.
+Stage12 taught that a zero-hit primary view can still hide real engine work in
+the map data; Stage13 then showed the primary player-start frame does naturally
+exercise real sprite projection once `THINGS` are loaded. Stage14 showed that
+the player-start route can prove accepted movement without forcing a collision,
+so bounded secondary probes remain useful for collision features that should
+not distort the main deterministic script. Stage15 showed the same rule applies
+to gameplay state: fixed probes can still be source-shaped when they are chosen
+from real THINGS/BLOCKMAP data and kept separate from the released baseline.
+Stage16 showed that wake/target state can become active before combat: one real
+monster can prove thinker mutation, state actions, and sight-driven targeting
+without starting damage, death, or generalized AI. Stage17 showed the shortest
+honest next step is nonlethal player hitscan damage: one source-shaped shotgun
+pellet can spend ammo, participate in bounded line/path traversal, mutate health,
+and leave death/drop/chase for later. Stage18 showed that the next honest
+movement after damage is not a clean chase start: source `P_MobjThinker` first
+services existing momentum, and one accepted MAP01 `P_TryMove` is enough to
+prove post-damage monster movement without executing attacks or generalized AI.
+Stage19 showed that the first environment mutation can be a fixed real manual
+door probe rather than a player-path requirement: `P_UseLines` and one door
+thinker can mutate a real sector without broad special dispatch, switch
+animation, sound channels, or live input. Stage20 showed that the reached sound
+boundary can become real state before any speaker backend exists: one selected
+`S_StartSound` call is enough to prove channel choice, metadata, attenuation,
+pitch variation, and usefulness/lump bookkeeping while keeping the platform
+start call deferred. Stage21 showed that the selected door thinker can be
+carried by the normal `P_Ticker -> P_RunThinkers` path without disturbing the
+direct stage19 proof. Stage22 showed that a real one-shot switch line can
+honestly combine switchlist texture mutation, tagged-sector lookup, thinker
+spawn, and one bounded ticker movement while still deferring reusable button
+restoration and broad special dispatch.
+Stage23 showed that the honest first reusable button proof is not in MAP01:
+the pinned IWAD has no clean MAP01 reusable button with a switchlist texture,
+so a real MAP15 candidate gives a tighter source-shaped proof than a synthetic
+MAP01 shortcut. It also showed that door thinker completion can happen during
+the bounded 35-tic button timer without requiring a generalized door system.
+Stage24 showed that floor movement has one subtle ticker detail worth preserving
+early: the selected lowerFloorToLowest movement reaches the destination on tic
+64, but source `T_MovePlane` reports `pastdest` only on the following strict
+comparison tic, and the lazy thinker unlink needs one more `P_RunThinkers` pass.
 
 Implemented or source-proven routines:
 
@@ -150,6 +340,118 @@ Implemented or source-proven routines:
   wall-edge debug loop
 - `r_plane.c`: `R_ClearPlanes` and `R_CheckPlane` as plane-mark record/count
   hooks for the stage11 handoff
+- `r_bsp.c`: `R_Subsector` floor/ceiling plane candidates as a source-shaped
+  visplane reference
+- `r_plane.c`: `R_ClearPlanes` as a source-shaped visplane/frame setup
+  reference
+- `r_plane.c`: `R_FindPlane` as a bounded padded-visplane reference
+- `r_plane.c`: `R_CheckPlane` as a bounded reuse/split reference
+- `r_plane.c`: `R_MakeSpans` as a source-shaped span-opening reference
+- `r_plane.c`: `R_MapPlane` as a fixed-view plane mapping reference
+- `r_plane.c`: `R_DrawPlanes` regular flat branch as a source-shaped reference
+- `r_draw.c`: `R_DrawSpan` as a narrow emitted scaler
+- WAD flat data: reachable 64x64 regular flat lumps table-emitted for the
+  fixed view
+- `r_sky.c`: `R_InitSkyMap` as fixed-view sky setup
+- `g_game.c`: Doom II `MAP01` `F_SKY1`/`SKY1` selection as a debug adaptation
+- `r_plane.c`: `R_DrawPlanes` sky branch as a narrow emitted sky-column loop
+- `r_segs.c`: `R_StoreWallRange` masked midtexture setup as a source-shaped
+  drawseg/opening reference
+- `r_segs.c`: `R_RenderSegLoop` `maskedtexturecol` writes as bounded
+  opening-style storage
+- `r_segs.c`: `R_RenderMaskedSegRange` as a narrow emitted masked-column loop
+- `r_things.c`: `R_DrawMaskedColumn` as the shared masked post/clipping
+  primitive
+- `p_setup.c`: `P_LoadThings` as source-shaped THINGS decoding
+- `p_mobj.c`: `P_SpawnMapThing` as a narrowed player-start/inert-render-mobj
+  setup path
+- `p_mobj.h` / `d_player.h`: minimal render-facing `mobj_t` and `player_t`
+  records
+- `info.c` / `info.h`: `sprnames`, `states`, `mobjinfo`, sprite numbers, and
+  frame indexes as parsed source tables
+- `r_data.c`: `R_InitSpriteLumps` metadata for reachable sprite patch lumps
+- `r_things.c`: `R_InitSprites`, `R_ClearSprites`, `R_NewVisSprite`,
+  `R_AddSprites`, `R_ProjectSprite`, `R_SortVisSprites`, `R_DrawSprite`, and
+  `R_DrawSpriteRange` as source-shaped references/table emission
+- `r_bsp.c`: `R_Subsector` sprite gather hook as a primary-sector census
+- `r_segs.c`: drawseg `sprtopclip` / `sprbottomclip` sprite clip interaction
+  as a synthetic-covered helper
+- `p_setup.c`: `P_LoadBlockMap` as source-shaped blockmap decoding
+- `p_maputl.c`: `P_BlockLinesIterator`, `P_BlockThingsIterator`,
+  `P_PointOnLineSide`, `P_BoxOnLineSide`, and `P_LineOpening` as bounded
+  movement/collision references
+- `p_map.c`: `PIT_CheckLine`, `PIT_CheckThing`, `P_CheckPosition`, and
+  `P_TryMove` as the narrowed local-player collision path
+- `p_user.c`: `P_Thrust`, `P_MovePlayer`, `P_CalcHeight`, and the movement
+  branch of `P_PlayerThink`
+- `p_mobj.c`: `P_XYMovement`, `P_SetThingPosition`, and
+  `P_UnsetThingPosition` for player mobj movement and relinking
+- `p_tick.c`: `P_Ticker` narrowed to the local player and player mobj
+  movement path
+- `g_game.c`: `G_Ticker` single-player `ticcmd_t` dispatch
+- `d_main.c` / `d_net.c`: frame/tic boundary references for deterministic
+  scripted tics
+- `r_main.c`: `R_SetupFrame` after movement as final frame setup proof
+- `g_game.c`: `G_PlayerReborn` inventory defaults
+- `p_mobj.c`: `P_SpawnPlayer` inventory/psprite setup path
+- `p_map.c`: `PIT_CheckThing` special-touch branch for bounded pickup probes
+- `p_inter.c`: `P_TouchSpecialThing`, `P_GiveAmmo`, `P_GiveWeapon`,
+  `P_GiveBody`, `P_GiveArmor`, `P_GiveCard`, and selected power grants
+- `d_items.c` / `d_items.h`: `weaponinfo` and ammo/weapon relationships
+- `p_pspr.c`: `P_SetupPsprites`, `P_SetPsprite`, `P_BringUpWeapon`, and
+  `P_MovePsprites` as no-fire ready-weapon proof
+- `st_stuff.c` / `st_lib.c`: compact status widget selection and real patch
+  draw commands
+- `v_video.c`: `V_DrawPatch` as a narrow emitted status patch-column path
+- `r_things.c`: `R_DrawPSprite` as a source-shaped ready weapon placement path
+- `p_tick.c`: `P_InitThinkers`, `P_AddThinker`, `P_RemoveThinker`, and a
+  bounded `P_Ticker` thinker iteration path
+- `p_mobj.c`: `P_SpawnMapThing`, `P_SpawnMobj`, `P_SetMobjState`, and
+  `P_MobjThinker` for one active MAP01 monster
+- `p_enemy.c`: `A_Look` and `P_LookForPlayers` for bounded target acquisition
+- `p_sight.c`: `P_CheckSight`, `P_CrossBSPNode`, and `P_CrossSubsector` as a
+  bounded REJECT+BSP sight probe
+- `p_enemy.c`: `A_Chase` and `P_NewChaseDir` as counted deferred boundaries
+- `p_pspr.c`: `P_CheckAmmo`, `A_WeaponReady`, `A_FireShotgun`,
+  `P_BulletSlope`, and `P_GunShot` as a bounded ready-shotgun fire proof
+- `p_maputl.c` / `p_map.c`: `P_PathTraverse`, `P_AimLineAttack`, and
+  `P_LineAttack` as a bounded hitscan path over real blockmap data
+- `p_inter.c`: `P_DamageMobj` and the reached nonlethal pain-state subset;
+  `P_KillMobj` remains synthetic/deferred for the pinned proof
+- `p_mobj.c`: `P_XYMovement` and post-damage `P_MobjThinker` source order for
+  one selected monster
+- `p_map.c` / `p_maputl.c`: monster `P_TryMove`, `P_CheckPosition`,
+  `PIT_CheckLine`, `PIT_CheckThing`, block iterators, and thing relinking for
+  one post-damage movement proof
+- `p_map.c` / `p_maputl.c`: `P_UseLines`, `PTR_UseTraverse`, and
+  `P_PathTraverse` as a bounded manual-use line probe
+- `p_switch.c`: `P_UseSpecialLine` selected manual-door dispatch, with
+  switch/button texture behavior covered as a deferred guard
+- `p_doors.c`: `EV_VerticalDoor` and `T_VerticalDoor` for one manual blazing
+  door thinker record
+- `p_spec.c`: `P_FindLowestCeilingSurrounding` / `getNextSector` for the
+  selected target sector
+- `p_floor.c`: `T_MovePlane` as a bounded ceiling mutation path
+- `s_sound.c`: `S_StartSound`, `S_AdjustSoundParams`, `S_StopSound`,
+  `S_StopChannel`, and `S_GetChannel` as a bounded first sound-channel state
+  proof
+- `sounds.h` / `sounds.c`: `sfx_bdopn` enum and `S_sfx` metadata parsing for
+  `SOUND("bdopn", 100)`
+- `m_random.c`: `M_Random` deterministic pitch variation for the selected
+  sound-start call
+- `i_sound.c`: `I_GetSfxLumpNum` and `I_StartSound` as counted platform
+  boundaries with no speaker output
+- `p_switch.c`: `P_InitSwitchList` and switchlist texture pair resolution
+- `p_switch.c`: `P_UseSpecialLine` case `103` selected switch-open-door
+  dispatch
+- `p_switch.c`: `P_ChangeSwitchTexture` one-shot top/middle/bottom switch scan
+  and `useAgain=0` line clear
+- `p_switch.c`: `P_StartButton` duplicate/free-slot behavior as
+  synthetic/deferred stage22 coverage
+- `p_doors.c`: `EV_DoDoor` tagged `vld_open` selected path
+- `p_spec.c`: `P_FindSectorFromLineTag` bounded tag iteration
+- `p_tick.c`: `P_Ticker` one-tic tagged-door continuation using the stage21
+  thinker path
 
 Emitted executables:
 
@@ -164,6 +466,18 @@ build/source_stage07_wall_projection_debug.exe
 build/source_stage08_texture_data_setup_debug.exe
 build/source_stage09_direct_wall_column_pixels_debug.exe
 build/source_stage10_composite_two_sided_wall_edges_debug.exe
+build/source_stage11_visplanes_floor_ceiling_debug.exe
+build/source_stage12_sky_and_masked_midtextures_debug.exe
+build/source_stage13_things_sprites_and_real_frame_setup.exe
+build/source_stage14_game_loop_input_collision.exe
+build/source_stage15_pickups_psprites_statusbar_shell.exe
+build/source_stage16_active_monster_thinkers_and_targeting.exe
+build/source_stage17_first_weapon_fire_damage_and_death_probe.exe
+build/source_stage18_post_damage_monster_movement_and_chase_probe.exe
+build/source_stage19_first_door_or_switch_sector_special_probe.exe
+build/source_stage20_audio_channels_and_deferred_sound_playback.exe
+build/source_stage21_door_thinker_ticker_and_special_update_probe.exe
+build/source_stage22_first_switch_texture_and_tagged_door_probe.exe
 ```
 
 Expected and verified behavior:
@@ -218,13 +532,56 @@ Expected and verified behavior:
 - Initialize source-shaped `ceilingclip[320]` / `floorclip[320]` for the
   two-sided edge proof, draw supported upper/lower wall-edge columns, and
   record floor/ceiling plane marks without drawing flat spans.
+- Consume the stage10 `727` ceiling and `932` floor plane marks through
+  bounded padded visplanes, split occupied planes visibly, map regular spans,
+  and draw `20791` floor/ceiling flat pixels through emitted x86
+  `R_DrawSpan`.
+- Run a source-shaped MAP01 feature census that finds `40` sky-ceiling sectors
+  and `27` two-sided masked sidedef candidates.
+- Preserve the primary player-start view's zero sky/masked hits as
+  `PSKY=0 PMASK=0`, then use a documented fixed feature probe at
+  `PVX=1771 PVY=-773 PVA=277 PSEC=196`.
+- Draw `32` `SKY1` sky columns and `1280` sky pixels through the sky branch of
+  `R_DrawPlanes`.
+- Draw `32` `AQMETL29` masked midtexture columns, `32` masked post commands,
+  and `1888` masked pixels after walls and flats.
+- Decode real `MAP01` `THINGS`, seed the fixed frame from player-one start,
+  gather `6` primary-frame vissprites, and draw `175` real sprite pixels.
+- Load the real `MAP01` `BLOCKMAP`, run the eight-tic stage14 movement script,
+  and preserve `S14SIG=3925602456`.
+- Run a separate fixed pickup proof through real THINGS/BLOCKMAP data:
+  shotgun mapthing `27`, then clip mapthing `41`.
+- Mutate source-shaped player inventory to `CLIP=60 SHELL=8 WOWN=3`, raise the
+  shotgun psprite to `S_SGUN`, draw real status and weapon patches, and report
+  `S15SIG=2810145191`.
+- Select real MAP01 shotgun-guy mapthing `37` / mobj `28`, advance it through
+  a 13-tic bounded thinker/state loop, acquire the stage15 player mobj through
+  `A_Look`, `P_LookForPlayers`, and bounded `P_CheckSight`, and report
+  `S16SIG=249707937` while keeping chase movement and combat deferred.
+- Fire the ready shotgun through a bounded source-shaped weapon path, spend one
+  shell, run real blockmap hitscan participation, mutate the selected shotgun
+  guy from `30` to `20` health through `P_DamageMobj`, and report
+  `S17SIG=2157381017` while keeping death/drop/chase absent.
+- Load the real `MAP01` `BLOCKMAP` with origin `(-256, -1808)` and size
+  `20x27`, run an eight-tic deterministic local command script from the real
+  player start, accept `8` source-shaped `P_TryMove` moves through blockmap
+  line/thing checks, relink the player mobj each move, and record a final
+  post-script frame setup at `F14X=-172 F14Y=-194 F14A=3 F14SS=227 F14SEC=0`.
+- Keep a separate MAP01 collision probe for the first blocking line proof:
+  `CPROBE=1 CLINE=0 CBLK=1 CBLN=1`.
 - Draw a simple top-down debug framebuffer with map lines, visited segs, and
   the fixed viewpoint marker; stage04 through stage06 overlay bbox-visible
-  segs from the second pass, and stages09/10 overlay wall pixels.
+  segs from the second pass, stages09/10 overlay wall pixels, stage11 overlays
+  regular flat pixels in marked floor/ceiling regions, and stage12 overlays the
+  fixed sky/masked feature-probe proof.
 - Display deterministic accept-all, sentinel-only bbox-visible, mutable
   clipping, wall-projection, texture setup, flat setup, first/last
-  projected-span texture IDs, direct-column counters, first drawn texture, and
-  runtime pixel signature in the framebuffer and window title.
+  projected-span texture IDs, direct-column counters, first drawn texture,
+  visplane/flat-span counters, first floor/ceiling flat names, sky/masked
+  probe metadata, first sky/masked texture names, sprite counters, movement
+  counters, blockmap counters, collision-probe counters, pickup/status
+  counters, active-monster thinker/target counters, and runtime pixel,
+  movement, or gameplay-state signatures in the framebuffer and window title.
 
 The verified stage09 smoke signal for pinned Freedoom2 `MAP01` is:
 
@@ -238,13 +595,50 @@ The verified stage10 smoke signal keeps the stage09 string above and adds:
 CMB=89 CMH=75 CMO=0 MCOL=2 MCEMP=133 UCOL=478 UCOMP=6 LCOL=138 PM=1659 F10TEX=850 F10N=AQRUST08 L10TEX=887 L10N=AQSECT08 TCOL=780 TPIX=37546 TSIG=4201955800
 ```
 
+The verified stage11 smoke signal keeps the stage10 string above and adds:
+
+```text
+VP=38 VPF=30 VPR=88 VPS=8 VPO=0 CPM=727 FPM=932 FSP=169 FPIX=20791 SKYV=0 SKYC=0 SKYP=0 FSK=0 SPO=0 F11F=81 F11FN=SLIME14 C11F=113 C11N=FLOOR5_2 FSIG=2178063413
+```
+
+The verified stage12 smoke signal keeps the stage11 string above and adds:
+
+```text
+SKCAND=40 MCAND=27 PROBE=1 PSKY=0 PMASK=0 SKYSEC=2 MSIDE=617 PVX=1771 PVY=-773 PVA=277 PSEC=196 SKYT=229 SKYN=SKY1 SCOL=32 SPIX=1280 MTEX=814 MN=AQMETL29 MCOL12=32 MPOST=32 MPIX=1888 SPR=0 SSK=0 S12SIG=2853564869
+```
+
+The verified stage13 smoke signal keeps the stage12 string above and adds:
+
+```text
+TH=200 PST=4 RMO=120 UTH=2 SKSK=17 PSX=-192 PSY=-192 PSA=0 PSS=0 SPNAMES=138 SPLUMPS=1350 SPMISS=0 SPSEC=29 VIS=6 VISOV=0 SPROBE=0 FSTH=8 FSPR=60 FSN=BON1 FSF=0 FSPT=1009 FSPN=BON1A0 SPCOL=35 SPPOST=40 SPPIX=175 S13SIG=2904743961
+```
+
+The verified stage14 smoke signal keeps the stage13 string above and adds:
+
+```text
+BMW=20 BMH=27 TIC=8 I14X=-192 I14Y=-192 F14X=-172 F14Y=-194 F14A=3 F14SS=227 F14SEC=0 F14VZ=2753061 F14MX=183699 F14MY=-36831 ACPT=8 REJ14=0 LCHK=48 TCHK=0 BLI=8 BTI=16 LDUP=8 SDEF=0 CPROBE=1 CLINE=0 CBLK=1 CBLN=1 RLINK=8 S14SIG=3925602456
+```
+
+The verified stage15 smoke signal keeps the stage14 string above and adds:
+
+```text
+PPROBE=2 PACC=2 PREM=2 P1=27 P1N=SHOT P2=41 P2N=CLIP HP=100 ARM=0 AT=0 CLIP=60 SHELL=8 WOWN=3 RDY=2 PEND=9 PSPST=18 PSPN=S_SGUN PSPT=1 STP=11 STCOL=469 STPIX=12533 WPN=SHTGA0 WPCOL=66 WPPIX=2083 MDEF=2 SNDDEF=2 S15SIG=2810145191
+```
+
+The verified stage16 smoke signal keeps the stage15 string above and adds:
+
+```text
+MCENS=18 ACTM=1 TADD=1 TRUN=13 MT16=37 MO16=28 M16N=SHOTGUY M16X=1752 M16Y=-936 M16SEC=58 M16BX=15 M16BY=6 MTIC0=3 LLOOK=1 LOOK=2 LFP=2 SIGHT=1 SOK=1 SNODE=77 SSUB=28 SLINE=5 TGT=1 ST0=207 STFN=S_SPOS_RUN1 STF=209 FTIC=3 CHDEF=1 SND16=1 ATK=0 DMG=0 KILL=0 S16SIG=249707937
+```
+
 This is deliberately still a debug renderer. It is a bridge from experiment to
 source-guided engine port: the project is walking real Doom BSP structures in
 source order, pruning bbox-invisible back subtrees, and computing mutable wall
 span clipping and wall projection live, with source-shaped texture/flat setup
-and a broader composite/two-sided wall-column path now proven. The end goal remains the
-same: build Doom from the source behavior, without a compiler, one runnable
-emitted PE32 slice at a time.
+and a broader wall-plus-regular-flat-plus-sky/masked/sprite rendering path plus
+the first local-player movement/collision, inventory/status, and active-monster
+targeting proofs now proven. The end goal remains the same: build Doom from the
+source behavior, without a compiler, one runnable emitted PE32 slice at a time.
 
 ## Lessons From source_stage07_wall_projection_debug
 
@@ -329,7 +723,7 @@ emitted PE32 slice at a time.
   visible pixels.
 - The two-sided edge pass produced a concrete handoff for visplanes:
   `727` ceiling mark records, `932` floor mark records, and `PM=1659` total.
-  Stage11 should turn those marks into real bounded `visplane_t` records before
+  Stage11 turned those marks into real bounded `visplane_t` records before
   drawing flats.
 - Stage10 still uses a table-fed debug bridge for selected column bytes. That
   is acceptable for this phase because Python is following source data and the
@@ -340,6 +734,28 @@ emitted PE32 slice at a time.
   masked drawing order eventually joins masked wall columns and sprites in
   `R_DrawMasked`, but sprites need `P_LoadThings`, sprite lump setup, and
   `mobj_t`/`player_t` state. Keep that as a separate release boundary.
+
+## Lessons From source_stage11_visplanes_floor_ceiling_debug
+
+- Padded `visplane_t` layout matters even in the Python reference. The source
+  writes sentinel `top[minx-1]` and `top[maxx+1]`, so modeling the pad bytes
+  made `R_MakeSpans` behave like the C routine instead of a simplified
+  rectangle filler.
+- The stage10 handoff is enough for a narrow regular-flat proof. Replaying
+  those marks through `R_FindPlane` and `R_CheckPlane` yields `38` visplanes,
+  `30` new planes, `88` reuses, and `8` splits for the pinned view.
+- `R_DrawSpan` is a good emitted-runtime boundary. Python can source-shape the
+  fixed `R_MapPlane` math and table-emit span globals, while the executable
+  still performs the packed-position flat sampling, framebuffer writes, pixel
+  counts, and signature updates live.
+- The pinned MAP01 player-start view has no visible sky plane in the stage10
+  handoff (`SKYV=0 SKYC=0 SKYP=0`) and no masked midtexture hit, even though
+  MAP01 contains both sky sectors and two-sided masked sidedefs. Stage12 should
+  preserve the player-start view and add a documented fixed feature probe if
+  needed, rather than treating zero sky/masked counters as a release.
+- The next slice should preserve the wall-first, regular-flat-second order and
+  add only the deferred sky/masked wall drawing. Real sprites remain a later
+  boundary because they need thing loading and actor state.
 
 ## Released Slice: source_stage03_bsp_walk_debug
 
@@ -512,7 +928,7 @@ Output:
 build/source_stage05_seg_clip_debug.exe
 ```
 
-Source routines to read and trace/reuse:
+Source routines traced/reused:
 
 - Reuse from stage04: `r_main.c`: `R_PointToAngle`, `viewangletox`,
   `xtoviewangle`, and `clipangle`
@@ -524,7 +940,7 @@ Source routines to read and trace/reuse:
 - `r_bsp.c`: `R_ClipPassWallSegment`
 - `r_segs.c`: `R_StoreWallRange` as a debug span-recording adaptation
 
-Goal:
+Released goal:
 
 Freeze the source-shaped mutable wall-span clipping behavior for pinned MAP01
 and make the executable visibly report those counters alongside the stage04
@@ -1131,7 +1547,7 @@ Released because:
   launches/closes the binary.
 - Source trace and smoke docs are updated.
 
-## Next Releasable Slice: source_stage11_visplanes_floor_ceiling_debug
+## Released Slice: source_stage11_visplanes_floor_ceiling_debug
 
 Output:
 
@@ -1189,15 +1605,15 @@ Runtime data to add:
 
 Implementation notes:
 
-- Source order matters: `R_ClearPlanes` runs at frame start; subsector handling
+- Source order mattered: `R_ClearPlanes` runs at frame start; subsector handling
   calls `R_FindPlane` for current floor/ceiling candidates; wall range storage
   calls `R_CheckPlane`; wall columns write top/bottom marks; `R_DrawPlanes`
-  later turns those visplane marks into spans. Stage11 should mirror that order
-  even if some structures are still table-fed for the fixed pinned view.
-- Stage10 provides the pinned handoff records for this: `727` ceiling marks,
-  `932` floor marks, and `PM=1659` total records. Stage11 should first consume
-  those records through source-shaped visplane find/check logic before mapping
-  any flat pixels.
+  later turns those visplane marks into spans. Stage11 mirrors that order with
+  some structures still table-fed for the fixed pinned view.
+- Stage10 provided the pinned handoff records for this: `727` ceiling marks,
+  `932` floor marks, and `PM=1659` total records. Stage11 consumes those
+  records through source-shaped visplane find/check logic before mapping flat
+  pixels.
 - The preferred implementation path is two internal checks: first reproduce the
   Stage10 plane-mark totals through bounded `visplane_t` records without
   drawing flats, then enable `R_MakeSpans` / `R_MapPlane` / `R_DrawSpan` over
@@ -1229,7 +1645,24 @@ Done when:
 - Full unit tests and GUI smoke pass.
 - Source trace and smoke docs are updated.
 
-## Releasable Slice After That: source_stage12_sky_and_masked_midtextures_debug
+Released because:
+
+- `build/source_stage11_visplanes_floor_ceiling_debug.exe` exists and
+  launches.
+- It preserves the stage10 wall-pixel signal:
+  `CMB=89 CMH=75 CMO=0 MCOL=2 MCEMP=133 UCOL=478 UCOMP=6 LCOL=138 PM=1659 F10TEX=850 F10N=AQRUST08 L10TEX=887 L10N=AQSECT08 TCOL=780 TPIX=37546 TSIG=4201955800`.
+- It reports deterministic stage11 visplane and regular flat-span counters:
+  `VP=38 VPF=30 VPR=88 VPS=8 VPO=0 CPM=727 FPM=932 FSP=169 FPIX=20791 SKYV=0 SKYC=0 SKYP=0 FSK=0 SPO=0 F11F=81 F11FN=SLIME14 C11F=113 C11N=FLOOR5_2 FSIG=2178063413`.
+- Synthetic tests cover `R_FindPlane`, `R_CheckPlane`, `R_MakeSpans`,
+  `R_MapPlane`, and `R_DrawSpan`.
+- Pinned MAP01 tests cover preserved stage10 counters, visplane counts,
+  plane-mark consumption, regular flat span/pixel totals, skipped sky
+  counters, first floor/ceiling flat IDs/names, and framebuffer signature.
+- `python -B -m unittest discover -s tests` passes and the scripted smoke test
+  launches/closes the binary.
+- Source trace and smoke docs are updated.
+
+## Released Slice: source_stage12_sky_and_masked_midtextures_debug
 
 Output:
 
@@ -1242,6 +1675,9 @@ Source routines to read and trace/reuse:
 - Reuse from stage11: wall columns, regular flat spans, visplanes,
   `ceilingclip` / `floorclip`, flat IDs, palette/colormap adaptation, and
   framebuffer signature.
+- Reuse the stage07/stage11 fixed-view setup path for a secondary MAP01
+  feature-probe view only if the primary player-start view still has no visible
+  sky or masked midtexture work.
 - `r_sky.c`: `R_InitSkyMap`.
 - `g_game.c`: sky flat/texture selection for Doom II `MAP01` only as a fixed
   debug adaptation (`F_SKY1` and `SKY1`).
@@ -1260,12 +1696,27 @@ columns. Preserve the fixed-view wall and flat renderer while proving Doom's
 late masked drawing order for wall openings. Do not add real sprites, movement,
 actors, gameplay, or a full game loop in this slice.
 
+Stage11 taught one important correction: the primary pinned player-start view
+reports no sky visplanes and no masked midtexture hits, even though the pinned
+Freedoom2 `MAP01` data contains `40` sky-ceiling sectors and `27` two-sided
+masked sidedef references, currently all resolving to `AQMETL29`. Stage12
+therefore must not be a zero-work title-only release. It should preserve the
+primary stage11 view and counters, then add a bounded secondary fixed
+feature-probe view selected from real `MAP01` geometry if needed to visibly
+exercise sky and masked-wall drawing. The probe view must be deterministic,
+documented in the trace/tests, and still use the pinned IWAD; it is not
+movement, gameplay, or a generalized camera.
+
 User-visible feature:
 
-- Draws stage11 walls/floors/ceilings plus supported sky ceiling columns.
-- Draws deterministic masked midtexture columns from real WAD patch/composite
-  data after solid wall and flat drawing.
-- Reports sky visplanes/columns/pixels, masked wall spans/columns/pixels,
+- Draws the primary stage11 player-start view unchanged.
+- Draws supported sky ceiling columns and deterministic masked midtexture
+  columns in the primary view if reachable; otherwise draws them in a
+  secondary fixed MAP01 feature-probe pane/view.
+- Draws masked midtexture columns from real WAD patch/composite data after
+  solid wall and flat drawing.
+- Reports primary-view preserved stage11 counters, feature-probe selection
+  metadata, sky visplanes/columns/pixels, masked wall spans/columns/pixels,
   masked ordering records, skipped sprite records, first sky texture name,
   first masked texture name, and a framebuffer signature.
 - Preserves upstream stage10/stage11 counters.
@@ -1274,6 +1725,9 @@ Runtime data to add:
 
 - `skyflatnum`, `skytexture`, `skytexturemid`, and the fixed Doom II `MAP01`
   sky texture selection needed by the debug view.
+- A small source-guided MAP01 feature-candidate scan emitted as deterministic
+  metadata: sky sector candidates, two-sided masked sidedef candidates, selected
+  probe view coordinates/angle/sector, and visible unsupported/zero counters.
 - `maskedtexturecol` / opening-style storage for two-sided midtexture columns,
   with bounded overflow counters.
 - Minimal drawseg fields needed by `R_RenderMaskedSegRange`: `x1`, `x2`,
@@ -1281,6 +1735,9 @@ Runtime data to add:
   and the sidedef/sector texture fields already proven by earlier slices.
 - Masked column globals used by `R_DrawMaskedColumn`, including `sprtopscreen`,
   `spryscale`, `mfloorclip`, and `mceilingclip`.
+- Separate primary/probe counters for sky and masked work if a probe view is
+  needed, so the title never hides the fact that the original player-start
+  view had zero feature hits.
 
 Implementation notes:
 
@@ -1290,23 +1747,37 @@ Implementation notes:
 - A fixed `SKY1` selection is acceptable for the pinned Doom II `MAP01` proof,
   but document it as a debug adaptation and keep later generalized episode/map
   sky selection small.
+- Start with a Python source-shaped candidate census over the pinned WAD and
+  map. If the primary view remains `SKYV=0` and `MASK=0`, choose one bounded
+  secondary MAP01 proof view from that census and freeze it in tests before
+  emitting bytes.
+- Keep the secondary view small: it may have its own draw commands and
+  signature path, but it must reuse existing source-shaped setup/math rather
+  than inventing a second renderer architecture.
 - The shared masked-column primitive may be source-shaped in Python first, but
   the executable must still draw deterministic sky/masked pixels and update a
   runtime signature.
 - Do not load things or project sprites in Stage12. It may include zero-sprite
   ordering counters so Stage13 has a clean hook, but real sprite data belongs
   with `P_LoadThings` and `mobj_t` setup.
+- Do not continue to stage13 unless the executable proves at least one real
+  sky or masked-wall pixel path from the pinned IWAD, either in the primary
+  view or the documented feature probe.
 
 Tests:
 
+- Synthetic MAP01-feature candidate tests for sky sector detection, two-sided
+  masked sidedef detection, and deterministic probe selection when the primary
+  pinned view has no feature hits.
 - Synthetic sky-column tests for angle-to-sky texture column selection and
   fixed `skytexturemid` stepping.
 - Synthetic `maskedtexturecol` / opening tests for bounded storage, clipping,
   and draw order after walls/flats.
 - Synthetic `R_DrawMaskedColumn` tests for post clipping against
   `mfloorclip`/`mceilingclip`.
-- Pinned MAP01 reference tests for sky counts, masked wall counts, first names,
-  skipped sprite count, and framebuffer signature.
+- Pinned MAP01 reference tests for preserved primary stage11 counters, feature
+  probe metadata if used, sky counts, masked wall counts, first names, skipped
+  sprite count, and framebuffer signature.
 - Build/smoke tests verifying preserved stage11 counters plus sky/masked
   counters, and confirming real sprites, actors, movement, gameplay, and
   `source_stage13` strings are absent.
@@ -1319,17 +1790,1630 @@ Done when:
 - Full unit tests and GUI smoke pass.
 - Source trace and smoke docs are updated.
 
+Released because:
+
+- `build/source_stage12_sky_and_masked_midtextures_debug.exe` exists and
+  launches.
+- It preserves the stage11 primary player-start wall/flat signal:
+  `VP=38 VPF=30 VPR=88 VPS=8 VPO=0 CPM=727 FPM=932 FSP=169 FPIX=20791 SKYV=0 SKYC=0 SKYP=0 FSK=0 SPO=0 F11F=81 F11FN=SLIME14 C11F=113 C11N=FLOOR5_2 FSIG=2178063413`.
+- It reports deterministic stage12 feature-probe, sky, masked-wall, and
+  signature counters:
+  `SKCAND=40 MCAND=27 PROBE=1 PSKY=0 PMASK=0 SKYSEC=2 MSIDE=617 PVX=1771 PVY=-773 PVA=277 PSEC=196 SKYT=229 SKYN=SKY1 SCOL=32 SPIX=1280 MTEX=814 MN=AQMETL29 MCOL12=32 MPOST=32 MPIX=1888 SPR=0 SSK=0 S12SIG=2853564869`.
+- Synthetic tests cover sky sector detection, masked sidedef detection,
+  deterministic probe selection, sky texture column selection,
+  `maskedtexturecol` storage/consumption, and masked post clipping.
+- Pinned MAP01 tests cover preserved stage11 counters, feature-probe metadata,
+  sky/masked names and counts, skipped sprite count, and framebuffer
+  signature.
+- `python -B -m unittest discover -s tests` passes and the scripted smoke test
+  launches/closes the binary.
+- Source trace and smoke docs are updated.
+
+## Released Slice: source_stage13_things_sprites_and_real_frame_setup
+
+Output:
+
+```text
+build/source_stage13_things_sprites_and_real_frame_setup.exe
+```
+
+Released proof:
+
+- Stage13 preserves all stage08-stage12 counters, including
+  `S12SIG=2853564869`.
+- It decodes `TH=200` real `MAP01` THINGS records, records `PST=4` player
+  starts, creates `RMO=120` render mobjs, and seeds the fixed frame from
+  `PSX=-192 PSY=-192 PSA=0 PSS=0`.
+- It initializes `SPNAMES=138 SPLUMPS=1350 SPMISS=0` sprite metadata records,
+  gathers `VIS=6` primary-frame vissprites from `SPSEC=29` source-shaped
+  sectors, and uses no sprite proof probe (`SPROBE=0`).
+- It draws first sprite `FSTH=8 FSPR=60 FSN=BON1 FSF=0 FSPT=1009 FSPN=BON1A0`
+  and reports `SPCOL=35 SPPOST=40 SPPIX=175 S13SIG=2904743961`.
+
+Source routines to read and trace/reuse:
+
+- Reuse from stage12: wall columns, regular flats, sky columns, masked wall
+  columns, drawseg/opening records, palette/colormap adaptation, and framebuffer
+  signature.
+- `p_setup.c`: `P_LoadThings`.
+- `p_mobj.c`: `P_SpawnMapThing` only as far as the fixed proof needs mapthing
+  type, position, angle, flags, and sprite/frame identity.
+- `info.c` / `info.h`: `mobjinfo`, states, sprite numbers, and frame indexes
+  needed for visible map things.
+- `p_mobj.h` / `d_player.h`: enough `mobj_t` and `player_t` layout to seed
+  render-facing fields without starting thinkers.
+- `r_data.c`: `R_InitSpriteLumps`, narrowed to table-emitted metadata for
+  reachable sprite lumps.
+- `r_things.c`: `R_InitSprites`, `R_ClearSprites`, `R_NewVisSprite`,
+  `R_AddSprites`, `R_ProjectSprite`, `R_SortVisSprites`, `R_DrawSprite`,
+  `R_DrawSpriteRange`, and the shared masked-column primitive already proven in
+  stage12.
+- `r_main.c`: `R_SetupFrame` using real loaded player start / minimal
+  `player_t` and `mobj_t` state instead of only hard-coded debug globals.
+
+Goal:
+
+Load real map things and prove Doom's sprite projection/drawing path for the
+fixed renderer without starting gameplay. This is the first slice where the
+renderer should use real `THINGS` data and a minimal source-shaped player/mobj
+frame setup, while still ending in a deterministic debug executable rather than
+a moving game.
+
+Stage13 remains renderer-first. It creates inert render-facing `mobj_t`
+records from `P_LoadThings` / `P_SpawnMapThing`, but it does not tick world
+state, process weapon psprites, perform collision movement, or advance the
+world.
+
+User-visible feature:
+
+- Preserves stage12 wall, flat, sky, and masked-wall output.
+- Seeds the fixed view from a minimal real player start object created from
+  `THINGS`, matching the previous pinned `(-192, -192, 0)` view.
+- Draws deterministic visible sprites from real WAD sprite lumps in the primary
+  player-start view, so no secondary MAP01 sprite-probe view is needed.
+- Reports thing counts, spawned player/mobj counts, sprite definitions/lumps
+  touched, vissprite counts, clipped/drawn sprite columns/pixels, skipped
+  unsupported sprite frames, first sprite name/frame, primary/probe selection
+  metadata if used, and framebuffer signature.
+
+Runtime data to add:
+
+- Bounded mapthing records loaded from `THINGS`.
+- Minimal inert `mobj_t` / `player_t` / view setup fields needed by
+  `R_SetupFrame`, `R_AddSprites`, and `R_ProjectSprite`: position, angle,
+  subsector/sector link, sprite, frame, render flags, radius/height, floorz,
+  ceilingz, and player start ownership.
+- Bounded sprite metadata tables: sprite names, sprite frame rotations, lump
+  numbers, offsets, widths, top offsets, and patch-column sources.
+- `vissprite_t`-shaped records, `vissprite_p`, overflow/sentinel handling, and
+  sorting storage.
+- Sprite clip access to stage12 drawseg `sprtopclip` / `sprbottomclip` data,
+  with visible overflow/skipped counters.
+- A deterministic sprite feature census over pinned `MAP01`, including primary
+  visible candidates and any secondary sprite-probe view required to prove at
+  least one real sprite pixel path.
+
+Implementation notes:
+
+- Keep this as a renderer-data slice, not gameplay. Do not add thinker ticks,
+  movement, collision, attacks, pickups, sound, status bar, automap, menu, or
+  save/game state.
+- Preserve the stage12 sky/masked proof and the primary stage12 counters before
+  adding sprite output. If a sprite probe is needed, keep it as explicit and
+  deterministic as the stage12 feature probe.
+- Prefer a Python source-shaped reference for sprite lump/frame selection and
+  projection before emitting bytes. The executable should still perform the
+  final sprite/masked-column draw loop and signature updates.
+- Keep primary player-start compatibility visible. Any secondary sprite probe
+  must be documented as a deterministic proof view selected from real MAP01
+  data, not a movable camera.
+- Reuse stage12's masked-column primitive wherever possible; sprite drawing and
+  masked-wall drawing share ordering and clipping ideas in the source.
+- Draw order should match the source: clear sprites at frame start, gather
+  sprites during subsector handling, draw walls/flats/sky, then draw masked
+  walls and sprites through the late masked path. If the debug slice keeps
+  masked walls and sprites in separate command buffers, the title/status should
+  make that adaptation visible.
+- Bound `vissprite` and sprite-column buffers with visible title counters.
+
+Tests:
+
+- Synthetic `P_LoadThings` tests for mapthing decoding, player start
+  recognition, and unsupported thing counts.
+- Synthetic `P_SpawnMapThing` tests for player starts, inert render mobjs,
+  skill/option filtering, and unsupported type counters.
+- Synthetic sprite metadata tests for lump naming, rotation/frame resolution,
+  offsets, and missing frame handling.
+- Synthetic `R_ClearSprites` / `R_NewVisSprite` tests for reset and overflow.
+- Synthetic `R_ProjectSprite` tests for view-space transform, screen x ranges,
+  scale, clipping, and rejection cases.
+- Synthetic `R_SortVisSprites` / `R_DrawSprite` / `R_DrawSpriteRange` tests for
+  draw order, horizontal clipping, and clip interaction with drawsegs.
+- Pinned MAP01 reference tests for thing counts, player start setup, visible
+  sprite counts, selected primary/probe view if needed, first sprite/frame,
+  drawn sprite pixels, and signature.
+- Build/smoke tests verifying preserved stage12 counters plus sprite counters,
+  and confirming gameplay loop, movement, collision, sound, UI, and
+  `source_stage14` strings are absent.
+
+Released status:
+
+- The stage13 executable draws deterministic sprites from real WAD sprite
+  lumps after stage12 walls/flats/sky/masked walls.
+- The fixed view is seeded from real loaded player-start data.
+- Runtime actor updates remain absent and visibly deferred.
+- Full unit tests and GUI smoke pass.
+- Source trace and smoke docs are updated.
+
+## Released Slice: source_stage14_game_loop_input_collision
+
+Output:
+
+```text
+build/source_stage14_game_loop_input_collision.exe
+```
+
+Source routines to read and trace/reuse:
+
+- Reuse from stage13: real loaded `THINGS`, minimal player/mobj setup, sprite
+  metadata, primary fixed renderer proof, and the emitted stage13 no-script
+  baseline.
+- `p_setup.c`: `P_LoadBlockMap`, because an honest movement/collision proof
+  needs real MAP01 block coordinates and block line lists.
+- `p_maputl.c`: `P_BlockLinesIterator`, `P_BlockThingsIterator`, and the
+  bounding-box/line-side helpers needed by the narrowed collision path.
+- `p_map.c`: `PIT_CheckLine`, `PIT_CheckThing`, `P_CheckPosition`,
+  `P_TryMove`, and only the `P_SlideMove` subset needed if the chosen script
+  hits a wall at an angle.
+- `p_user.c`: `P_Thrust`, `P_MovePlayer`, `P_CalcHeight`, and the movement
+  portion of `P_PlayerThink`.
+- `p_mobj.c`: `P_XYMovement`, `P_SetThingPosition`, and
+  `P_UnsetThingPosition` as far as they update the player mobj's position,
+  sector/subsector link, block link, and floor/ceiling values.
+- `p_tick.c`: `P_Ticker`, narrowed to one local player and the player mobj
+  movement path, not a generalized thinker list.
+- `g_game.c`: `G_Ticker` command dispatch for a single local player.
+- `d_main.c` / `d_net.c`: `D_DoomLoop` / `TryRunTics` only as timing and
+  frame-boundary references for a deterministic scripted run.
+- `r_main.c`: `R_SetupFrame` rerun after the player mobj moves, so the final
+  frame uses updated source-shaped view fields.
+
+Goal:
+
+Turn the fixed renderer harness into the first source-shaped local-player world
+slice: load real blockmap state, run a short deterministic `ticcmd_t` script
+from the real player start, move through the source player/mobj/collision path,
+and re-render the final frame. This is still not full gameplay. It should prove
+command interpretation, momentum, map collision, sector relinking, and
+post-move frame setup while preserving a deterministic stage13 baseline mode.
+
+User-visible feature:
+
+- The executable runs a bounded scripted command sequence, for example
+  forward/turn/strafe tics chosen from a Python source-shaped MAP01 census.
+- It renders the original stage13 fixed frame and a final post-script frame,
+  or clearly reports both the baseline and scripted signatures.
+- It reports initial/final player x/y/z, angle, subsector, sector, viewz,
+  momentum, accepted/rejected move counts, slide counts if used, blocking
+  line/thing counts, blockmap dimensions, tic count, and a deterministic
+  movement/frame signature.
+- It keeps a no-script comparison path so `S13SIG=2904743961` remains visible
+  and testable.
+- It does not add attacks, pickups, doors/switch activation, monster AI,
+  damage, sound, status bar, automap, menu, save/load, or networking.
+
+Runtime data to add:
+
+- A minimal `ticcmd_t` buffer and local player command runner for deterministic
+  scripted input.
+- Movement-facing `player_t` fields: command, viewheight, deltaviewheight,
+  bob, viewz, playerstate, cheats/no-clip flag, and enough weapon/psprite
+  fields to keep the movement branch inert.
+- Movement-facing `mobj_t` fields: x/y/z, momx/momy/momz, radius/height,
+  flags, angle, floorz, ceilingz, subsector/sector links, block links,
+  reactiontime, state, and player ownership.
+- Real blockmap data: origin, width, height, block offsets/lists, and bounded
+  iterators for line and thing checks.
+- Collision globals mirrored from `p_map.c`: `tmthing`, `tmx/tmy`, `tmbbox`,
+  `tmfloorz`, `tmceilingz`, `tmdropoffz`, touched line counters, and visible
+  overflow/skip counters.
+- Sector/block thing lists for the player and inert solid things that can block
+  movement; special pickup mutation remains deferred and should be counted if a
+  script touches one accidentally.
+- Deterministic per-tic trace records and per-frame signature records for
+  smoke tests.
+
+Implementation notes:
+
+- Keep this stage source-guided and narrow. It is the first moving-player proof,
+  not the first combat or interaction proof.
+- Start with a Python reference over the pinned WAD that loads blockmap data,
+  runs the scripted tics, and freezes expected positions/counters before
+  emitting bytes.
+- Choose a script that proves at least one accepted move. If a natural script
+  from the player start does not hit a blocking line or thing, choose one
+  deterministic MAP01 collision probe and report it separately, the same way
+  stage12 separated its feature probe.
+- Do not fake movement with direct position assignment. The path should be
+  `ticcmd_t -> P_PlayerThink/P_MovePlayer -> P_Thrust -> P_XYMovement ->
+  P_TryMove/P_CheckPosition` for accepted/rejected movement.
+- Avoid pickup routes in the stage14 script. If `PIT_CheckThing` sees
+  `MF_SPECIAL`, count it as deferred rather than mutating inventory.
+- Keep live keyboard input out of the releasable proof. It can be a later
+  convenience, but the smoke path must be deterministic.
+- Preserve the stage13 fixed render path and add the scripted movement render
+  as a clearly separated pass so renderer regressions are easy to spot.
+- Bound every tic, block, line, thing, touch-line, and movement buffer with
+  title/status counters.
+
+Tests:
+
+- Synthetic `P_LoadBlockMap` tests for header decoding, offsets, terminators,
+  bounds, and malformed block lists.
+- Synthetic block iterator tests for line and thing visitation order, duplicate
+  suppression, and overflow counters.
+- Synthetic `ticcmd_t`, `P_Thrust`, `P_MovePlayer`, and `P_XYMovement` tests
+  for forward/side/angle command interpretation and momentum/friction.
+- Synthetic `P_CheckPosition` / `P_TryMove` tests for open space, wall block,
+  step/drop limits, thing blocking, and deferred special-touch accounting.
+- Pinned MAP01 scripted movement reference tests for initial/final position,
+  angle, subsector, sector, viewz, accepted/rejected movement counts, blocking
+  line/thing counters, and final signature.
+- Build/smoke tests verifying preserved stage13 render counters plus stage14
+  movement/collision counters, and confirming attacks, pickups, monster AI,
+  sound, UI, save/load, networking, and `source_stage15` strings are absent.
+
+Released status:
+
+- The stage14 executable preserves the full stage13 baseline, including
+  `S13SIG=2904743961`.
+- It loads real `MAP01` blockmap data (`BMW=20 BMH=27`) and runs an eight-tic
+  deterministic command script from `I14X=-192 I14Y=-192`.
+- The script proves accepted source-shaped movement:
+  `F14X=-172 F14Y=-194 F14A=3 F14SS=227 F14SEC=0 F14VZ=2753061
+  F14MX=183699 F14MY=-36831 ACPT=8 REJ14=0 LCHK=48 TCHK=0`.
+- The separate MAP01 collision probe reports
+  `CPROBE=1 CLINE=0 CBLK=1 CBLN=1`.
+- Stage14 reports `S14SIG=3925602456` and keeps deferred systems absent from
+  the PE status strings. Stage14-focused unit tests and GUI smoke pass; the
+  most recent full `unittest discover` run was blocked locally by Windows
+  Defender/AV while launching older stage09/stage11 smoke executables, not by a
+  stage14 assertion.
+- Source trace and smoke docs are updated.
+
+## Released Slice: source_stage15_pickups_psprites_statusbar_shell
+
+Output:
+
+```text
+build/source_stage15_pickups_psprites_statusbar_shell.exe
+```
+
+Released proof:
+
+- Stage15 preserves the full stage14 movement/collision baseline and runs a
+  separate fixed MAP01 pickup proof selected by a source-shaped pickup census.
+- The released route touches shotgun mapthing `27` / mobj `21` / sprite
+  `SHOT`, then clip mapthing `41` / mobj `30` / sprite `CLIP`; both touches
+  go through real `THINGS`/`BLOCKMAP` participation and `PIT_CheckThing ->
+  P_TouchSpecialThing`.
+- Final stage15 title/status proof:
+  `PPROBE=2 PACC=2 PREM=2 P1=27 P1N=SHOT P2=41 P2N=CLIP HP=100 ARM=0 AT=0 CLIP=60 SHELL=8 WOWN=3 RDY=2 PEND=9 PSPST=18 PSPN=S_SGUN PSPT=1 STP=11 STCOL=469 STPIX=12533 WPN=SHTGA0 WPCOL=66 WPPIX=2083 MDEF=2 SNDDEF=2 S15SIG=2810145191`.
+  The preserved stage14 baseline remains `S14SIG=3925602456`.
+  Dedicated stage15 unit/build/GUI smoke tests pass.
+
+Source routines to read and trace/reuse:
+
+- Reuse from stage14: scripted local-player movement, real blockmap collision,
+  player/mobj sector/block links, and the post-move renderer proof.
+- `g_game.c`: `G_PlayerReborn` and player inventory defaults as the source
+  shape for health, starting weapons, ammo, cards, powers, frags, and weapon
+  slots.
+- `p_mobj.c`: `P_SpawnPlayer` setup that connects the player mobj, viewheight,
+  health, ready weapon, and psprite initialization; keep the stage14 movement
+  fields stable.
+- `p_map.c`: `PIT_CheckThing` special-touch branch now enabled for a bounded
+  set of pickups.
+- `p_inter.c`: `P_TouchSpecialThing`, `P_GiveAmmo`, `P_GiveWeapon`,
+  `P_GiveBody`, `P_GiveArmor`, `P_GiveCard`, selected powerup grant helpers,
+  and the bonus/message side effects only as far as deterministic pickups
+  require.
+- `d_items.c` / `d_items.h`: `weaponinfo` and ammo/weapon relationships.
+- `p_pspr.c`: `P_SetupPsprites`, `P_SetPsprite`, `P_BringUpWeapon`,
+  `P_MovePsprites`, and `P_CheckAmmo`; firing states remain deferred unless a
+  no-damage dry proof is explicitly needed.
+- `st_stuff.c` / `st_lib.c`: `ST_Start`, `ST_Ticker`, and the widget drawing
+  path narrowed to a deterministic status-bar shell.
+- `v_video.c`: `V_DrawPatch` / patch blit behavior reused in a narrow emitted
+  form for status and psprite patches.
+- WAD status/weapon patches: only the reachable status digits/icons and ready
+  weapon psprite patches needed by the pinned proof.
+
+Goal:
+
+Make the first visible game-state slice after movement: walk into one or more
+real MAP01 pickups, update source-shaped player inventory/state, show the
+ready weapon psprite/status-bar shell, and re-render deterministically. This is
+still not combat and not a full HUD/menu system. The important transition is
+from "the player can move through the map" to "the player can mutate game state
+through the same collision/touch path the source uses."
+
+User-visible feature delivered:
+
+- The release uses a documented fixed MAP01 pickup probe for two selected real
+  `MF_SPECIAL` things, while keeping the released stage14 movement script as
+  the no-pickup baseline.
+- The executable reports pickup type, removed/kept thing counts, health, armor,
+  ammo, owned weapons, ready/pending weapon, psprite state, status-bar pixels,
+  weapon-sprite pixels, and final signature.
+- The status output visually proves at least one source-shaped inventory or
+  weapon-state change.
+- It renders a compact bottom status strip and a ready weapon overlay using
+  real WAD patch data, with counters for the first status patch and first
+  psprite patch drawn.
+- Attacks, damage, monster AI, doors/switches, sound playback, automap, menu,
+  save/load, networking, and live keyboard gameplay remain absent.
+
+Runtime data added:
+
+- Player inventory/state fields: health, armorpoints, armortype, ammo,
+  maxammo, weaponowned, cards, powers, readyweapon, pendingweapon, bonuscount,
+  itemcount, secretcount passthrough if needed, damagecount/message fields as
+  inert or counted-deferred values, and enough message/item counters for
+  deterministic reporting.
+- Pickup mutation for bounded map things: picked/removed flags, item counters,
+  and no respawn.
+- Two `pspdef_t` records and state/lump metadata for ready weapon proof.
+- Status-bar patch metadata, palette/colormap reuse, and table-emitted
+  patch-column draw commands for a compact, deterministic widget shell.
+- Visible counters for unsupported pickup types, skipped powerups, skipped
+  weapon actions, deferred messages/sounds, and status/psprite draw overflows.
+
+Implementation notes from release:
+
+- Stage15 started with a Python source-shaped pickup census over the pinned
+  WAD, then froze candidate thing indexes, map coordinates, block coordinates,
+  and expected before/after player inventory before emitting bytes.
+- The released pickups are deterministic and narrow: shotgun plus clip, proving
+  weapon grant and separate ammo grant without requiring combat.
+- Do not repurpose the stage14 blocking-line probe as an item route. Keep the
+  released movement script stable, then select a separate deterministic
+  pickup route or MAP01 item probe from the real thing/blockmap data.
+- Stage15 enabled `P_TouchSpecialThing` only after stage14 collision was
+  stable; pickup debugging stayed separate from first blockmap movement
+  debugging.
+- Source-shaped psprites prove weapon state/lump setup and movement of psprite
+  timers. They do not fire or spawn attacks in this slice.
+- The compact status-bar shell uses real status patches and source-shaped
+  player values. Full menus, automap, intermission, and finale remain later
+  work.
+- Sound starts, pickup messages, weapon flashes, and attack states remain
+  deferred counters.
+- The emitted proof stays small: Python parses WAD patch data and source
+  tables, while the executable owns the deterministic state proof, final patch
+  draw, and signature path.
+
+Tests added:
+
+- Synthetic `G_PlayerReborn` / `P_SpawnPlayer` tests for initial health, ammo,
+  weapon ownership, ready/pending weapon, psprite setup, and stable carry-over
+  of stage14 movement fields.
+- Synthetic `P_GiveAmmo`, `P_GiveWeapon`, `P_GiveBody`, `P_GiveArmor`, and
+  selected key/powerup grant tests.
+- Synthetic `P_TouchSpecialThing` tests for pickup acceptance, already-full
+  rejection, unsupported type counters, item removal, and deferred
+  message/sound accounting.
+- Synthetic psprite tests for setup, ready weapon state, pending weapon change,
+  timer stepping, and no-fire deferral.
+- Synthetic status widget tests for number/icon patch selection and clipped
+  patch-column drawing.
+- Synthetic patch blit tests for status/weapon patches using the existing
+  palette and post/column parsing assumptions.
+- Pinned MAP01 pickup reference tests for selected pickup path/probe, thing
+  indexes, before/after inventory state, thing removal, status/psprite pixel
+  counts, and signature.
+- Build/smoke tests verifying preserved stage14 movement/render counters plus
+  stage15 pickup/status counters, and confirming monster AI, attacks, doors,
+  sound, menus, save/load, networking, and `source_stage16` strings are absent.
+
+Released status:
+
+- The stage15 executable performs a deterministic real pickup proof through
+  source-shaped player inventory code.
+- Weapon psprite readiness and a compact real-patch status shell are visible
+  and counted.
+- Stage14 movement/collision remains testable as a baseline.
+- Combat, doors/switches, sound, menus, save/load, and networking remain absent
+  from the released PE behavior.
+- Source trace and smoke docs are updated.
+
+## Released Slice: source_stage16_active_monster_thinkers_and_targeting
+
+Output:
+
+```text
+build/source_stage16_active_monster_thinkers_and_targeting.exe
+```
+
+Why this slice was needed:
+
+Stage15 proved source-shaped player state mutation and a ready weapon shell,
+but it deliberately kept every monster inert. Jumping straight to full combat
+would require thinker lists, monster state transitions, target acquisition,
+movement, sight checks, weapon firing, damage, deaths, and drops all at once.
+That is too much for one honest release. Stage16 first made one real MAP01
+monster active and visibly source-shaped, while keeping attacks and damage out
+of scope.
+
+Source routines to read and trace/reuse:
+
+- Reuse from stage15: real player inventory, psprite/status shell, movement,
+  collision, sector/block thing links, shotgun+clip pickup baseline, and
+  deterministic signatures through `S15SIG=2810145191`.
+- `p_setup.c`: `P_SetupLevel` counters around `totalkills`, `totalitems`, and
+  `P_LoadThings`, only as needed to stop treating all non-player mobjs as inert
+  render records.
+- `p_tick.c`: `P_InitThinkers`, `P_AddThinker`, `P_RemoveThinker`, and bounded
+  `P_Ticker` thinker iteration with mutation while iterating.
+- `p_mobj.c`: `P_SpawnMobj`, `P_SpawnMapThing`, `P_SetMobjState`,
+  `P_RemoveMobj`, `P_MobjThinker`, and `P_ZMovement` for a small active mobj
+  subset.
+- `p_enemy.c`: `A_Look`, `P_LookForPlayers`, `A_Chase`, and `P_NewChaseDir`
+  only if the selected proof needs a chase step.
+- `p_sight.c`: `P_CheckSight` if the selected monster proof needs real
+  line-of-sight before target acquisition.
+- `p_map.c` / `p_maputl.c`: monster `P_TryMove` / blockmap helpers only for
+  bounded chase movement if the selected proof uses it.
+- `info.c` / `info.h`: monster spawn, see, chase, and no-attack state metadata
+  for the selected monster type.
+
+Released goal:
+
+Introduce the first bounded active monster loop. One real MAP01 monster is
+spawned as a real thinker, advances through source-shaped state/tic logic, and
+acquires the player as a target. The selected proof reaches the first chase
+action and records it as a deferred boundary instead of moving. The executable
+reports the changed monster state and `S16SIG=249707937`. It does not fire,
+damage anything, kill anything, open doors, play audio, or generalize monster
+AI.
+
+User-visible feature:
+
+- A Python source-shaped census selects one real MAP01 monster and records its
+  mapthing index, mobj index, type, sprite/state, sector/block position,
+  distance to the player, and line-of-sight result.
+- The executable reports active thinker count, thinker tics run, selected
+  monster identity, state transitions, target acquisition result, sight checks,
+  chase deferral, final monster state, preserved stage15 counters, and
+  `S16SIG`.
+- The renderer/status shell should still show the stage15 player state, while
+  the selected monster's source-shaped state change is reflected in sprite
+  selection or proof counters.
+
+Implementation notes from release:
+
+- Stage16 started with a source-shaped monster census over the pinned WAD and
+  selected shotgun-guy mapthing `37` / mobj `28`, at `(1752,-936)`, sector
+  `58`, block `(15,6)`.
+- The monster's spawn tics use the source randomization shape and become
+  `MTIC0=3`; the source `lastlook=1` behavior means the first `A_Look` call
+  does not check player zero, while the second call does.
+- The proof uses a bounded REJECT+BSP `P_CheckSight` path that reports
+  `SIGHT=1 SOK=1 SNODE=77 SSUB=28 SLINE=5`.
+- The clean proof targets the player without requiring movement. Chase movement
+  is left for a later slice; the reached `A_Chase` action is recorded as
+  `CHDEF=1`.
+- Count sound starts, alert propagation, attacks, damage, deaths, drops, sector
+  specials, and respawn behavior as deferred. Do not implement them in stage16.
+- Keep live keyboard input out; use scripted or fixed proof data as before.
+
+Tests added:
+
+- Synthetic thinker-list initialization, add, deferred remove, and iteration
+  tests, including mutation while iterating.
+- Synthetic `P_SetMobjState` / `P_MobjThinker` tests for tics, action dispatch,
+  state changes, null/removal handling, and bounded action deferral.
+- Synthetic `A_Look`, `P_LookForPlayers`, and bounded `P_CheckSight` tests for
+  the selected monster proof.
+- Pinned MAP01 active-monster reference tests for selected monster identity,
+  thinker counts, state/tic sequence, target acquisition, sight counters,
+  preserved stage15 counters, and signature.
+- Build/smoke tests verifying preserved stage15 counters plus stage16 active
+  monster counters, and confirming attacks, damage, doors/switches, audio
+  playback, menus, save/load, networking, and `source_stage17` strings are
+  absent.
+
+Released status:
+
+- The stage16 executable advances at least one real MAP01 monster through a
+  bounded source-shaped thinker/targeting path.
+- The selected monster's state or target state changes visibly in counters and
+  rendering while stage15 pickup/status behavior remains intact.
+- Attacks, damage, deaths, drops, doors/switches, sector specials, audio
+  playback, menus, save/load, and networking remain absent.
+- Source trace and smoke docs are updated.
+
+## Released Slice: source_stage17_first_weapon_fire_damage_and_death_probe
+
+Output:
+
+```text
+build/source_stage17_first_weapon_fire_damage_and_death_probe.exe
+```
+
+Goal:
+
+Build on stage16's active monster by proving one deterministic attack/damage
+path. The preferred route is a player weapon proof against the selected active
+monster after the stage15 shotgun pickup and stage16 target acquisition. The
+released stage16 pair is promising but not already aimed: the player probe ends
+at `(1824,-680)` with the shotgun owned/ready and `SHELL=8`, the selected
+shotgun guy is at `(1752,-936)` with `health=30`, and line of sight is proven,
+but the player mobj angle is still `0`. The attack census clarified the paired
+bearings: player-to-target is `254` degrees, while target-to-player is `74`
+degrees. Stage17 therefore freezes the source-shaped player-to-target attack
+angle and proves one bounded damage event rather than a combat system.
+
+Source routines to read and trace/reuse:
+
+- Reuse from stage16: active thinker list, selected monster, target state,
+  bounded sight result, blockmap links, stage15 player inventory/status/
+  psprites, and deterministic rendering through `S16SIG=249707937`.
+- Reuse the concrete stage16 target pair first: player mobj `0` at
+  `(1824,-680)`, sector `196` / subsector `633`; shotgun-guy mobj `28` at
+  `(1752,-936)`, sector `58` / subsector `620`; `P_CheckSight` already reports
+  `SIGHT=1 SOK=1 SNODE=77 SSUB=28 SLINE=5`.
+- `p_pspr.c`: `P_CheckAmmo`, `A_WeaponReady`, the selected fire action
+  (`A_FirePistol`, `A_FireShotgun`, or another chosen minimal path), flash
+  state setup, ammo decrement, and the `P_SetPsprite` transitions needed to
+  enter/leave the selected firing state.
+- `p_pspr.c`: `P_BulletSlope` and `P_GunShot` if the selected route is pistol
+  or shotgun hitscan.
+- `p_map.c`: `P_AimLineAttack`, `P_LineAttack`, `PIT_AimLineAttack`, and
+  `PIT_LineAttack` for a hitscan proof if selected.
+- `p_inter.c`: `P_DamageMobj`, `P_KillMobj`, player/monster damage accounting,
+  pain/death state changes, kill count mutation, and item-drop behavior only if
+  the selected proof reaches a kill.
+- `p_mobj.c`: `P_SetMobjState`, `P_RemoveMobj`, corpse/drop setup, and missile
+  spawning only if a hitscan proof is not viable.
+- `m_random.c`: deterministic random table use for spread/damage only where
+  the selected source path requires it.
+
+User-visible feature:
+
+- The executable reports selected attacker/target, weapon/state, ammo before
+  and after, chosen attack angle, target bearing, aim/line traversal counts,
+  hit/miss result, damage rolled/applied, target health before/after,
+  pain/death/removal/drop counters if reached, psprite state/flash counters,
+  updated status pixels, and `S17SIG`.
+- Stage17 should still avoid generalized monster AI, monster chase movement,
+  doors/switches, sector specials, audio playback, menus, save/load,
+  networking, and live input.
+
+Implementation notes:
+
+1. Start with a Python source-shaped attack census over the released stage16
+   pair. Record current player angle, target bearing, angle delta, sight result,
+   weapon ownership/readiness, ammo, target health, and candidate fire actions.
+2. Prefer hitscan before missiles because it avoids projectile thinker lifetime
+   and collision breadth. The first candidates should be:
+   - current ready shotgun with a deterministic source-shaped aim angle if the
+     full `A_FireShotgun` path is still bounded;
+   - pistol only if switching/readying it is smaller than shotgun death/drop
+     breadth;
+   - a documented monster attack probe only if the player weapon path turns out
+     less source-faithful for this pinned pair.
+3. Do not assume the current player angle hits the selected monster. Either
+   advance a tiny scripted aim/fire tic through source-shaped command handling,
+   or freeze a documented attack probe angle from the source-shaped census and
+   count that as a probe boundary.
+4. Keep death/drop optional. A nonlethal damage event is releasable if it
+   proves ammo use, line/path participation, deterministic damage mutation, and
+   render/status update. If the shortest honest shotgun proof kills the target,
+   include only the reached `P_KillMobj` subset and count clip-drop spawning as
+   deferred unless it is needed for the signature.
+5. Count audio starts, broad alert propagation, recoil/light side effects, and
+   unselected weapon families as deferred unless the chosen source path cannot
+   be represented without them.
+
+Tests:
+
+- Synthetic attack-census tests for target bearing, aim choice, current-angle
+  miss/hit distinction, and no live-input dependency.
+- Synthetic ammo/fire/psprite tests for the selected weapon action, flash state
+  setup, ammo decrement, no-ammo rejection, and no accidental unsupported
+  weapon families.
+- Synthetic aim/line attack tests over a bounded blockmap with hit, miss, and
+  intercept ordering, including one solid-line block and one shootable-mobj
+  intercept.
+- Synthetic damage, pain, death, state transition, removal, and optional drop
+  tests, scaled to exactly what the pinned proof reaches.
+- Pinned MAP01 first-damage reference tests for selected route, attack angle,
+  before/after ammo/health/state, hit/damage counters, render/status pixels,
+  and signature.
+- Build/smoke tests verifying preserved stage16 counters plus stage17 damage
+  counters, and confirming doors/switches, sector specials, audio playback,
+  menus, save/load, networking, and `source_stage18` strings are absent.
+
+Released status:
+
+- The stage17 executable launches and preserves the full stage16 active-monster
+  proof.
+- The released route uses the stage15 ready shotgun and selected stage16
+  shotgun guy. It reports `CANG=0 AANG=254 TBRG=254 ADEL=254 CMISS=1`,
+  `SH0=8 SH1=7`, `HIT17=1 DMG17=10 HP0=30 H17=20`, final state
+  `ST17N=S_SPOS_PAIN`, and `S17SIG=2157381017`.
+- The bounded path reaches `P_CheckAmmo`, `A_WeaponReady`, `P_SetPsprite`,
+  `A_FireShotgun`, `P_BulletSlope`, `P_AimLineAttack`, `P_LineAttack`, and
+  `P_DamageMobj`; death/removal/drop stay absent because the selected proof is
+  nonlethal.
+- Generalized combat, monster chase movement, doors/switches, sector specials,
+  audio playback, menus, save/load, networking, live input, and stage18 strings
+  remain absent from the stage17 executable.
+
+## Released Slice: source_stage18_post_damage_monster_movement_and_chase_probe
+
+Output:
+
+```text
+build/source_stage18_post_damage_monster_movement_and_chase_probe.exe
+```
+
+Released goal:
+
+Prove the next honest source-shaped monster movement after stage17. The
+released stage17 target is still the selected MAP01 shotgun guy, but it is not
+standing cleanly in `S_SPOS_RUN1`: it is alive at health `20`, state
+`S_SPOS_PAIN` (`220`), `tics=3`, `target_index=0`, `threshold=100`, and has
+post-damage thrust momentum `momx=-22182 momy=-78859`. Source `P_MobjThinker`
+services XY momentum before state tic transitions, and the pain path runs
+`S_SPOS_PAIN -> S_SPOS_PAIN2 -> S_SPOS_RUN1` before `A_Chase` can move.
+
+Stage18 therefore did not assume a pure chase start. It began with a
+post-stage17 monster-movement census and chose the shortest source-faithful
+movement proof:
+
+- The reached post-damage `P_XYMovement -> P_TryMove` momentum movement
+  produces a real deterministic position/collision mutation, so it is the
+  pinned proof.
+- Bounded pain recovery to `S_SPOS_PAIN2`/`S_SPOS_RUN1`, `A_Pain`, `A_Chase`,
+  `P_NewChaseDir`, `P_Move`, blocked movement, target-loss fallback, and
+  attack gates are covered synthetically.
+- No fresh pre-damage chase candidate is needed; the post-stage17 path is small
+  and source-ordered.
+
+Source routines to read and trace/reuse:
+
+- Reuse from stage17: selected shotgun guy identity, post-damage health/state,
+  target, threshold, momentum, sector/block links, and `S17SIG=2157381017`.
+- `p_mobj.c`: `P_MobjThinker`, `P_XYMovement`, `P_SetMobjState`, and
+  `P_ZMovement` only if the selected route reaches vertical movement.
+- `p_enemy.c`: `A_Pain` as a reached sound-only deferral, then `A_Chase`,
+  `P_NewChaseDir`, `P_Move`, and melee/missile range checks only as gates.
+- `p_map.c` / `p_maputl.c`: monster `P_TryMove`, `P_CheckPosition`,
+  `PIT_CheckLine`, `PIT_CheckThing`, `P_BlockLinesIterator`,
+  `P_BlockThingsIterator`, `P_SetThingPosition`, and `P_UnsetThingPosition`.
+- `info.c` / `info.h`: shotgun-guy pain and run state sequence, speed, radius,
+  height, flags, and chase metadata.
+
+User-visible feature:
+
+- The executable reports selected mover/target, start and final position,
+  start/final state and tics, post-damage momentum before/after, pain recovery
+  steps if reached, move direction/count, tried directions, accepted/rejected
+  movement, blocking line/thing counters, sector/block relinks, attack
+  deferrals, preserved stage17 counters, and `S18SIG`.
+- It does not execute attacks, doors/switches, sector specials, audio playback,
+  menus, save/load, networking, or live input. Sound starts and attack choices
+  are counted as deferred boundaries.
+
+Implementation notes:
+
+- The released emitter is
+  `tools/emit_source_stage18_post_damage_monster_movement_and_chase_probe.py`.
+- The stage17 reference world is reused first, then the stage18 movement census
+  records state `220`, `tics=3`, target `0`, threshold `100`, momentum
+  `(-22182,-78859)`, and block `(15,6)` for the selected monster.
+- The proof stays to one selected monster and one `P_MobjThinker` tic. Source
+  order services XY momentum before pain-state recovery, calls real MAP01
+  `P_TryMove`, accepts the move, relinks block/sector state, applies friction,
+  and decrements pain tics.
+- The pinned proof does not reach `A_Chase`; melee/missile range checks and
+  selected attack states remain deferred in synthetic coverage only.
+- Stage17 render/status/damage counters are preserved exactly.
+
+Tests:
+
+- Synthetic post-damage `P_MobjThinker` tests for XY momentum service, pain
+  tics, `S_SPOS_PAIN2`, `A_Pain` deferral, and transition back to
+  `S_SPOS_RUN1`.
+- Synthetic `A_Chase` / `P_NewChaseDir` tests for direction choice, target loss
+  fallback, attack gating, and deferred attack actions.
+- Synthetic monster `P_TryMove` tests for accepted move, blocked line, blocked
+  thing, drop/step limits, and relink accounting.
+- Pinned MAP01 movement reference tests for selected monster identity,
+  post-stage17 starting state, start/final block position, momentum/chase
+  counters, attack deferrals, preserved stage17 counters, and `S18SIG`.
+- Build/smoke tests verifying preserved stage17 counters plus stage18 movement
+  counters, and confirming doors/switches, sector specials, audio playback,
+  menus, save/load, networking, and `source_stage19` strings are absent.
+
+Released status:
+
+- The stage18 executable launches and preserves the full stage17 first-damage
+  proof.
+- The released route starts with selected shotgun guy mapthing `37`, mobj `28`,
+  type `SHOTGUY`, at `(1752,-936)`, state `S_SPOS_PAIN`, `tics=3`, momentum
+  `(-22182,-78859)`, target `0`, and threshold `100`.
+- One source-shaped `P_MobjThinker` tick reaches
+  `P_XYMovement -> P_TryMove -> P_CheckPosition` over real MAP01 blockmap,
+  line, thing, sector, and subsector data. The move is accepted with
+  `TRY18=1 MACC=1 MREJ=0 MLCHK=8 MTCHK=0`, relinks once, and finishes at
+  `(1751,-938)`, block `(15,6)`, state `S_SPOS_PAIN`, `tics=2`, momentum
+  `(-20103,-71466)`.
+- The proof reports
+  `M18R=1 M18TIC=1 XY18=1 PAINTIC=1 P18DEF=0 CH18=0 NCD18=0 PMV18=0 ATK18=0 ATKEX18=0 S18SIG=1615679087`.
+- Generalized monster AI, generalized combat, attacks, doors/switches, sector
+  specials, sound playback, automap, menus, save/load, networking, live input,
+  and stage19 strings remain absent from the stage18 executable.
+
+## Released Slice: source_stage19_first_door_or_switch_sector_special_probe
+
+Output:
+
+```text
+build/source_stage19_first_door_or_switch_sector_special_probe.exe
+```
+
+Released goal:
+
+Introduce the first bounded environment state change from Doom source behavior,
+not a generalized special system. Stage19 starts with a source-shaped MAP01
+line/sector special census and picks one honest, small proof. The released
+route is a fixed feature probe around a real manual door, not the current
+player path: the stage17/stage18 player position is `456` map units from the
+selected line, outside `USERANGE=64`, but MAP01 has real manual door lines that
+are narrow enough to prove source behavior without broadening movement or live
+input.
+
+Released proof:
+
+- MAP01 linedef `332`, special `117` (`EV_VerticalDoor` blazing door raise),
+  is activated from the front side by a fixed probe at `(1792,-160)` facing
+  east.
+- The line is two-sided, has no tag dependency, uses visible `BIGDOOR1`, and
+  directly targets sector `56` through `line->sidenum[side^1]`.
+- Target sector `56` starts with floor/ceiling `16/16`.
+  `P_FindLowestCeilingSurrounding` finds surrounding ceiling `112`, giving
+  `topheight=108`.
+- One bounded thinker tic mutates the sector ceiling via
+  `T_VerticalDoor -> T_MovePlane` from `16` to `24` map units for blazing speed
+  (`VDOORSPEED*4 = 8` map units).
+
+Fallbacks if the preferred candidate turns out misleading:
+
+- Use another real manual door, such as paired special `117` lines `165/167`
+  or `721/876`, with the same direct-sector door path.
+- Use the switch/button door path only if the manual door path is less honest
+  than expected. The current MAP01 census has a tag-based switch/button door
+  candidate at linedef `839`, special `103`, tag `4`, targeting sector `208`,
+  but that also pulls in `P_ChangeSwitchTexture` and switch-list behavior.
+- Keep crossing specials, scrolling lines, floor/plat specials, exit lines, and
+  sector damage/light specials deferred unless the chosen door proof cannot be
+  represented honestly without them.
+
+The proof mutates one line/sector/thinker state and reports deterministic
+counters while preserving stage18 movement and stage17 damage.
+
+Source routines to read and trace/reuse:
+
+- `p_map.c`: `P_UseLines` and its `P_PathTraverse` use-line path, with a
+  scripted fixed probe rather than live input.
+- `p_switch.c`: `P_UseSpecialLine` dispatch, but only the selected manual-door
+  case should be active in the pinned proof.
+- `p_doors.c`: `EV_VerticalDoor`, `T_VerticalDoor`, door type/speed/topwait
+  setup, and direct back-sector selection for manual doors.
+- `p_floor.c`: `T_MovePlane` for ceiling mutation and bounded crush/block
+  accounting.
+- `p_spec.c`: `P_SpawnSpecials` only as a census/deferred baseline unless the
+  selected proof needs line animations or button restoration. `P_UpdateSpecials`
+  should stay mostly deferred for stage19.
+- `p_maputl.c`: `P_PathTraverse`/intercept ordering for use-line reach, reusing
+  the stage17 hitscan traversal shape where practical.
+- `p_switch.c`: `P_ChangeSwitchTexture`, `P_StartButton`, and button timer
+  restoration only in synthetic tests or if a switch fallback becomes the
+  pinned proof.
+
+User-visible feature:
+
+- The executable reports selected special line, probe position/angle,
+  front/back side result, target sector, sector floor/ceiling before and after,
+  computed top height, door type/speed/direction/topwait, spawned thinker count,
+  bounded `T_VerticalDoor`/`T_MovePlane` tic count, line/path/intercept counts,
+  sound/button/switch deferrals, preserved stage18/stage17 counters, and
+  `S19SIG`.
+- It does not implement generalized map progression, all special types,
+  keyed-door inventory policy beyond synthetic guards, switch animation lists
+  beyond the chosen proof, audio playback, menus, save/load, networking, or live
+  input.
+
+Implementation notes:
+
+- The released emitter is
+  `tools/emit_source_stage19_first_door_or_switch_sector_special_probe.py`.
+- The census covers real MAP01 linedefs, sectors, sidedefs, tags, and special
+  types, and records why a fixed feature probe is used: the existing stage18
+  player position is not within `USERANGE` of the chosen line.
+- Reuse the stage18 executable structure and preserved title/status counters.
+  Do not disturb the stage18 monster movement proof.
+- Build only the selected door data needed for line `332`/`330` or the selected
+  fallback: line flags/special/sides, target sector, surrounding-sector ceiling
+  search, and one door thinker record.
+- Treat `S_StartSound`, allocation tags, and broad thinker memory management as
+  counted deferrals. The emitted PE can table-emit one door thinker record
+  rather than generalizing `Z_Malloc`.
+- Keep the first proof to one activation and a tiny number of thinker tics.
+  One post-activation `T_VerticalDoor` tic is releasable if it mutates the
+  sector ceiling through `T_MovePlane` and reports the computed top height.
+- Synthetic coverage may include locked-door rejection, use through a blocking
+  nonspecial line, already-active `specialdata`, switch/button texture
+  deferral, and a tag-based `EV_DoDoor` fallback. Keep the pinned proof to one
+  manual door unless the census proves otherwise.
+
+Tests:
+
+- Synthetic use-line/path tests for front-side activation, back-side rejection,
+  blocked nonspecial line, no-special pass-through, and one-special-only
+  traversal termination.
+- Synthetic `EV_VerticalDoor` tests for manual door spawn, locked-door
+  rejection, already-active door direction handling, computed top height, and
+  sound deferral.
+- Synthetic `T_VerticalDoor` / `T_MovePlane` tests for first upward ceiling
+  mutation, past-destination behavior, wait-at-top setup, and crush/block
+  accounting.
+- Synthetic switch/button tests should prove `P_ChangeSwitchTexture` and
+  `P_StartButton` are either deferred or bounded fallback behavior, not a
+  generalized switch system.
+- Pinned MAP01 reference tests for selected line/sector identity, activation
+  route, topheight, before/after ceiling mutation, preserved stage18/stage17
+  counters, and `S19SIG`.
+- Build/smoke tests verifying preserved counters plus stage19 special counters,
+  and confirming audio playback, menus, save/load, networking, live input, and
+  `source_stage20` strings are absent.
+
+Released status:
+
+- The stage19 executable launches and preserves the full stage18 post-damage
+  monster movement proof and stage17 first-damage proof.
+- The released use route reports
+  `S19LINE=332 SIDE=0 S19SEC=56 S19SPEC=117 S19TEX=BIGDOOR1 PROBE19=1 U19X=1792 U19Y=-160 U19A=0 P18USE=0 P18DIST=456`.
+- The bounded line traversal reports
+  `PATH19=1 BLK19=1 LI19=5 TRV19=1 USE19=1 BACK19=0 TERM19=1`.
+- The manual door proof spawns one table-emitted door thinker with
+  `VD19=1 DTH19=1 TOP19=108 F19=16 C190=16 C191=24 DIR19=1 SPD19=8 TWAIT19=150 TD19=1 MP19=1 MPR19=0`.
+- Switch/button behavior, broad special dispatch, broad door/switch systems,
+  broad sector effects, real sound output, and live input remain counted as
+  absent or deferred:
+  `SWDEF19=0 BTNDEF19=0 GSPEC19=0 GDOOR19=0 GSECT19=0 AUD19=1 LIVE19=0`.
+- The released signature is `S19SIG=2088411722`.
+
+## Released Slice: source_stage20_audio_channels_and_deferred_sound_playback
+
+Output:
+
+```text
+build/source_stage20_audio_channels_and_deferred_sound_playback.exe
+```
+
+Released goal:
+
+Realize the first bounded sound-start behavior after many stages counted
+sound as a deferral. This is still not generalized audio playback and not an
+OS/device mixer slice. Stage20 preserves stage19 and converts the reached
+manual-door sound boundary from `EV_VerticalDoor` into
+source-shaped `S_StartSound` channel state:
+
+- Selected source call site: stage19 manual blazing door line `332`, special
+  `117`, sector `56`, `S_StartSound(&sec->soundorg, sfx_bdopn)`.
+- Selected sound metadata: `sounds.h` enum `sfx_bdopn`, `sounds.c` entry
+  `SOUND("bdopn", 100)`.
+- Selected runtime state: a bounded channel array equivalent to
+  `snd_channels=8`, one channel mutation, deterministic pitch/volume/separation
+  accounting, and a counted `I_StartSound` playback deferral.
+- Preserve stage19's `AUD19=1` as the old boundary and add explicit stage20
+  sound-state counters that prove the boundary has become real source-shaped
+  state.
+
+Source routines to read and trace/reuse:
+
+- `s_sound.c`: `S_Init` channel setup shape, but table-emit or statically emit
+  the bounded channel records rather than generalizing `Z_Malloc`.
+- `s_sound.c`: `S_StartSound`, including bogus-sfx guard, linked-sfx volume and
+  pitch handling, audibility branch, pitch variation branch, `S_StopSound`,
+  `S_GetChannel`, usefulness/lump bookkeeping, and the final `I_StartSound`
+  boundary.
+- `s_sound.c`: `S_GetChannel`, `S_StopSound`, and `S_StopChannel` for free
+  channel choice, same-origin replacement, priority replacement, and duplicate
+  usefulness accounting.
+- `s_sound.c`: `S_AdjustSoundParams` only as far as the selected sector origin
+  requires. If the stage19 door `soundorg` has no full mobj position yet, first
+  run a Python census of sector `soundorg` setup and either emit the minimal
+  origin fields or document a centered-origin fallback with a deferral counter.
+- `sounds.c` / `sounds.h`: `S_sfx` metadata and enum id for `sfx_bdopn`.
+- `p_doors.c`: stage19 `EV_VerticalDoor` manual-door sound call site,
+  preserving selected origin and sound id.
+- `m_random.c`: deterministic `M_Random` pitch variation if the selected sound
+  reaches the normal pitch-randomization branch.
+- `i_sound.c` / Chocolate Doom platform glue only as a boundary reference.
+  Stage20 does not open a sound device or play speaker audio.
+
+User-visible feature:
+
+- The executable reports selected sound id/name/lump name, source call site,
+  origin class, channel count, chosen channel index, same-origin stop count,
+  priority replacement result, usefulness before/after, lump lookup deferral,
+  pitch before/after, volume, separation, final `I_StartSound` deferral,
+  preserved stage19/stage18/stage17 counters, and `S20SIG`.
+- Actual speaker playback remains deferred. A releasable stage20 is
+  deterministic sound-channel state mutation and source-shaped channel
+  selection, not a finished sound mixer.
+
+Implementation notes:
+
+1. Start by reading `s_sound.c`, `sounds.h`, `sounds.c`, `p_doors.c`, and the
+   sector `soundorg` setup path used by loaded sectors.
+2. Preserve the exact stage19 manual-door proof before changing the audio
+   boundary. The selected door still mutates sector `56` from `16` to `24` in
+   the same first thinker tic.
+3. Keep the emitted runtime bounded to the selected `sfx_bdopn` door-open
+   call. Do not generalize music, all sound effects, all active origins, sound
+   caching, lump decoding, resampling, or a platform audio backend.
+4. Count `I_GetSfxLumpNum`, sound data caching, `I_StartSound`, `I_StopSound`,
+   and device playback as explicit deferrals unless the selected channel-state
+   proof cannot be represented without a tiny stub value.
+5. Synthetic coverage should exercise replacement and rejection branches, but
+   the pinned MAP01 proof should start from an empty channel table and fill one
+   deterministic channel.
+
+Tests:
+
+- Synthetic `S_StartSound` tests for bogus id rejection, linked-sfx volume/pitch
+  handling, same-origin stop, free-channel selection, priority replacement,
+  no-channel rejection, normal pitch randomization, and no-device playback
+  deferral.
+- Synthetic `S_AdjustSoundParams` tests for same-origin normal separation,
+  audible near source, clipped far source, and volume/separation math if the
+  selected proof reaches positional attenuation.
+- Pinned MAP01 stage20 reference test for the stage19 door sound boundary
+  becoming deterministic channel state for `sfx_bdopn`.
+- Build/smoke test verifying preserved stage19 counters plus sound-channel
+  counters, and confirming menus, save/load, networking, live input, and
+  `source_stage21` strings are absent.
+
+Definition of done:
+
+- `build/source_stage20_audio_channels_and_deferred_sound_playback.exe` exists.
+- It launches, preserves stage19 exactly, and reports deterministic `S20SIG`.
+- The selected `sfx_bdopn` sound-start call mutates one source-shaped channel
+  record without real audio playback.
+- Generalized audio playback, music, menus, automap, save/load, networking,
+  live input, broader special systems, and stage21 remain absent.
+
+Released status:
+
+- The stage20 executable launches and preserves the full stage19 manual-door
+  sector mutation proof, stage18 post-damage movement proof, and stage17
+  first-damage proof.
+- The selected sound metadata is source-parsed as `sfx_bdopn`, source enum id
+  `88`, name `bdopn`, priority `100`.
+- Sector `56`'s sound origin is computed from the source `P_GroupLines`
+  centered bounding-box rule as `(1832,-160)`, with the fixed stage19 use probe
+  `(1792,-160)` acting as the listener for this bounded proof.
+- The released sound-channel signal is:
+  `S20CALL=1 S20LINE=332 S20SEC=56 S20ID=88 S20N=bdopn S20PRI=100 CHS20=8 CH20=0 ORG20=56 O20X=1832 O20Y=-160 L20X=1792 L20Y=-160 DIST20=40 VOL20=64 SEP20=129 P200=127 RND20=8 P201=135 STOP20=1 SAME20=0 GET20=1 FREE20=1 REP20=0 NOCH20=0 USE200=-1 USE201=1 LDEF20=1 LUMP20=0 IST20=1 H20=0 PLAY20=0 AUD20=1 MIX20=0 MUS20=0 ALLS20=0 CACH20=0 S20SIG=3226031347`.
+- The emitted runtime starts from an empty bounded 8-channel table, fills
+  channel `0` with `sfx_bdopn`, origin id `1056`, pitch `135`, handle `0`, and
+  leaves actual platform playback absent.
+
+## Released Slice: source_stage21_door_thinker_ticker_and_special_update_probe
+
+Output:
+
+```text
+build/source_stage21_door_thinker_ticker_and_special_update_probe.exe
+```
+
+Released goal:
+
+After stage20 makes the reached sound boundary real as channel state, reconnect
+the selected manual door thinker to a bounded source-shaped game tic. Stage19
+remains preserved exactly, including its direct one-tic
+`T_VerticalDoor -> T_MovePlane` proof. Stage21 adds an isolated normal-ticker
+proof using a cloned copy of the same post-activation door state, without
+rewriting the stage19/stage20 path underneath it.
+
+The pinned proof starts from the stage19 selected door immediately after
+`EV_VerticalDoor` has created it: sector `56`, ceiling `16`, topheight `108`,
+direction `1`, speed `8`, topwait `150`. Two bounded ticker tics prove
+`P_Ticker -> P_RunThinkers -> T_VerticalDoor -> T_MovePlane` with source-order
+leveltime accounting and produce the continuation `16 -> 24 -> 32` without
+reaching wait-at-top, closing, removal, switch animation, or button restoration.
+
+Source routines to read and trace/reuse:
+
+- `p_tick.c`: `P_InitThinkers`, `P_AddThinker`, `P_RunThinkers`, lazy
+  `P_RemoveThinker`, and the relevant `P_Ticker` order.
+- `p_doors.c`: `T_VerticalDoor` continuing the same blazing door from stage19,
+  including wait-at-top setup if the bounded tic count reaches the top.
+- `p_floor.c`: `T_MovePlane` for repeated ceiling mutation and past-destination
+  handling.
+- `p_spec.c`: `P_UpdateSpecials` as a deliberately bounded pass: level timer,
+  global flat/texture animation, scrolling line specials, and button restore
+  behavior should remain counted absent unless the selected proof reaches them.
+- `p_mobj.c` / `p_user.c`: the player-think portion of `P_Ticker` should be an
+  explicit no-op/deferred guard for this isolated door proof. Do not broaden
+  live input, local movement, monster AI, or combat in this slice.
+- `s_sound.c`: preserve the stage20 channel-state proof; do not start new sound
+  playback or expand sound effects during the ticker proof.
+
+User-visible feature:
+
+- The executable reports preserved stage20/stage19 counters, thinker-list
+  setup, one selected door thinker node, bounded `P_Ticker` count,
+  `P_RunThinkers` iteration count, door-function dispatch count, repeated
+  ceiling heights, leveltime before/after, `P_UpdateSpecials` no-op/deferred
+  counters, player-think guard counters, and `S21SIG`.
+- It still avoids generalized specials, all door/switch types, animated
+  texture systems, button restoration, music, real audio playback, menus,
+  automap, save/load, networking, and live input.
+
+Implementation notes:
+
+1. Preserve stage20 and stage19 exact counters/signatures. Stage21 adds a new
+   cloned ticker proof instead of moving stage19's direct door tic.
+2. Table-emit a bounded `thinkercap` plus one selected door thinker node. This
+   is the first normal thinker-list ownership proof for a map special, not a
+   general allocator or arbitrary thinker system.
+3. Keep `P_Ticker` source order visible: pause/menu guards, player-think guard,
+   `P_RunThinkers`, `P_UpdateSpecials`, `P_RespawnSpecials` deferral, and
+   `leveltime++`.
+4. Keep `P_UpdateSpecials` present but empty for the pinned door run. Texture
+   animation, scrolling lines, level timer exits, and button restore should be
+   counted as absent/deferred, setting up the following switch/button work.
+5. Include synthetic coverage for lazy removal and top/wait transitions, but
+   keep the pinned proof to the safe upward movement window unless the census
+   shows a smaller honest path.
+
+Tests:
+
+- Synthetic thinker-list tests for add order, removal marker handling,
+  next-pointer safety while a thinker mutates/removes itself, and bounded
+  iteration counts.
+- Synthetic door ticker tests for repeated upward movement, exact top clamp,
+  wait-at-top setup, and no accidental close/reopen unless the bounded tic count
+  intentionally reaches it.
+- Synthetic `P_UpdateSpecials` guard tests proving animations, scroll specials,
+  buttons, and level exits are absent or counted deferred in the pinned proof.
+- Pinned MAP01 stage21 reference test preserving the selected sector `56` door
+  state and proving it advances through `P_Ticker` rather than a direct door
+  call.
+
+Released status:
+
+- The stage21 executable launches and preserves the full released stage20
+  sound-channel proof, stage19 manual-door mutation proof, stage18
+  post-damage movement proof, and stage17 first-damage proof.
+- The selected cloned ticker state is sector `56`, type `vld_blazeRaise`,
+  ceiling `16`, topheight `108`, direction `1`, speed `8`, and topwait `150`.
+- The bounded ticker proof reports:
+  `S21SEC=56 CAP21=1 ADD21=1 NODE21=1 LNK21=4 PTIC21=2 RUN21=2 ITER21=2 DISP21=2 NEXT21=2 TVD21=2 MP21=2 C210=16 C211=24 C212=32 TOP21=108 SPD21=8 DIR21=1 WAIT21=150 TCNT21=0 PLY21=2 UPD21=2 RESP21=2 LT210=0 LT211=2 ORDER21=1 PAUSE21=0 MENU21=0 ANIM21=0 SCRL21=0 BTN21=0 EXIT21=0 REM21=0 CLOSE21=0 SND21=0 AUD21=0 MIX21=0 MUS21=0 LIVE21=0 S21SIG=1770773845`.
+- Synthetic tests cover thinker cap initialization, append order, dispatch,
+  lazy removal, next-pointer safety, bounded iteration limits, repeated upward
+  door movement, exact top clamp/wait setup, open-door removal, pause/menu
+  ticker guards, and `P_RunThinkers` before `P_UpdateSpecials`.
+- Generalized specials, generalized doors/switches, switch texture mutation,
+  button restoration, generalized sector effects, live input, menus, automap,
+  save/load, networking, music, real audio playback, mixer/device playback, and
+  reusable button behavior remain outside the stage21 emitted runtime.
+
+## Released Slice: source_stage22_first_switch_texture_and_tagged_door_probe
+
+Output:
+
+```text
+build/source_stage22_first_switch_texture_and_tagged_door_probe.exe
+```
+
+Released goal:
+
+After stage21 makes the normal ticker path real enough to carry map-special
+thinkers, add the first source-shaped switch texture mutation and tagged-door
+activation. Re-checking the pinned `MAP01` candidate after stage21 confirms the
+next slice is still accurate: real linedef `839` has special `103`, tag `4`,
+front/right sidedef `1289`, and lower texture `SW2COMP`; the only tagged sector
+is sector `208`. The source route is
+`P_UseLines -> P_UseSpecialLine -> EV_DoDoor(line, vld_open) ->
+P_ChangeSwitchTexture(line, 0)`, followed by one bounded ticker tic for the
+new tagged door thinker.
+
+This should be a bounded real-map switch proof, not a generalized switch,
+button, or tagged-special system. The pinned route should prove one tag lookup,
+one selected sector door thinker spawn for tag `4`, one switch texture pair
+change `SW2COMP -> SW1COMP` through the source `switchlist`, and one normal
+door-open ticker movement for sector `208` from ceiling `-80` to `-78`.
+Button timers/restoration stay out of the pinned stage22 proof because
+`P_ChangeSwitchTexture(line, 0)` clears the one-shot switch and never calls
+`P_StartButton`.
+
+Pinned data checked for stage22:
+
+- Linedef `839`: special `103`, tag `4`, side `0`, right sidedef `1289`, left
+  sidedef `1290`.
+- Right/front sidedef `1289`: sector `152`, top `-`, middle `-`, lower
+  `SW2COMP`; source slot to mutate is bottom/lower.
+- Tag `4` resolves only to sector `208`, with floor `-80`, ceiling `-80`,
+  special `0`.
+- `P_FindLowestCeilingSurrounding(sector 208)` reaches neighboring ceiling `0`,
+  so `EV_DoDoor(vld_open)` sets topheight to `-4`, direction `1`, speed `2`,
+  and topwait `150`.
+- A one-tic ticker after spawn should move the tagged door ceiling
+  `-80 -> -78`; it should not reach wait-at-top, removal, or button restore.
+
+Source routines to read and trace/reuse:
+
+- `p_switch.c`: `P_InitSwitchList`, `P_UseSpecialLine` case `103`,
+  `P_ChangeSwitchTexture`, switch texture pair lookup, and the one-shot
+  `useAgain=0` behavior that clears the line special.
+- `p_doors.c`: `EV_DoDoor` tagged-door open path, but only for the selected
+  tag `4` candidate and `vld_open` door type.
+- `p_spec.c`: `P_FindSectorFromLineTag` for bounded tag iteration.
+- `r_data.c`: texture name/id resolution already exists; reuse it for
+  switchlist entries rather than inventing a separate texture table.
+- `s_sound.c`: switch sound should remain a counted boundary or a tiny reuse of
+  the stage20 sound-start proof if that stays bounded. Do not turn this into
+  broad audio.
+- `p_tick.c`: reuse the stage21 bounded thinker/ticker path for one post-spawn
+  `vld_open` door tic, preserving the existing cloned stage21 door proof.
+
+User-visible feature:
+
+- The executable reports preserved stage21/stage20 counters, selected switch
+  line/special/tag/sidedef, switch texture before/after, switchlist pair index,
+  line special before/after, selected tagged sector/door fields, tag iteration
+  counts, one ticker movement for the tagged sector door, switch sound
+  deferral/channel guard counters, and `S22SIG`.
+- It still avoids reusable button timers/restoration in the pinned proof unless
+  a real clean MAP01 button candidate contradicts the current census.
+  `P_StartButton` and buttonlist restoration should be synthetic coverage only
+  in stage22, then become the focus of stage23.
+
+Tests:
+
+- Synthetic switchlist tests for Doom II pair availability, top/middle/bottom
+  texture matching, no-match no-op, one-shot `line->special=0`, and reusable
+  button `P_StartButton` guard behavior.
+- Synthetic tag-door tests for one matching sector, no matching sector,
+  already-active sector skip, and multiple tagged sectors without generalizing
+  all door types.
+- Synthetic `P_ChangeSwitchTexture` tests proving `SW2COMP -> SW1COMP` and
+  switch sound boundary/deferred channel behavior.
+- Synthetic ticker tests proving the newly spawned `vld_open` door advances one
+  tic and does not remove, close, or reopen.
+- Pinned MAP01 reference tests for linedef `839`, special `103`, tag `4`,
+  sidedef `1289`, lower texture `SW2COMP`, switch pair mutation to `SW1COMP`,
+  line special clear, selected sector `208` door spawn, first ticker movement
+  `-80 -> -78`, preserved stage21 counters, and deterministic `S22SIG`.
+
+Released status:
+
+- The stage22 executable launches and preserves the released stage21, stage20,
+  and stage19 signals.
+- The selected real line is `839`, special `103`, tag `4`, side `0`, right
+  sidedef `1289`, left sidedef `1290`, with front lower texture `SW2COMP`.
+- Source switchlist lookup resolves pair `6`, switchlist index `13`, and
+  mutates `SW2COMP -> SW1COMP`; one-shot activation clears the line special
+  from `103` to `0`.
+- Tag `4` resolves only to sector `208`; the selected sector starts with floor
+  `-80`, ceiling `-80`, special `0`, reaches neighboring ceiling `0`, and
+  spawns a `vld_open` door with topheight `-4`, direction `1`, speed `2`, and
+  topwait `150`.
+- One bounded ticker tic advances the tagged door ceiling from `-80` to `-78`
+  through the stage21 thinker/ticker path.
+- The released stage22 signal is:
+  `S22LINE=839 S22SPEC=103 TAG22=4 SIDE22=0 RSID22=1289 LSID22=1290 SLOT22=2 TEX220=SW2COMP TEX221=SW1COMP PAIR22=6 SWI22=13 SPC221=0 PATH22=1 LI22=7 TRV22=2 EV22=1 TFIND22=1 TITER22=211 TSEC22=208 F22=-80 C220=-80 LOW22=0 TOP22=-4 DIR22=1 SPD22=2 WAIT22=150 ADD22=1 PTIC22=1 TVD22=1 MP22=1 C221=-78 UPD22=1 BTN22=0 REM22=0 CLOSE22=0 SWSND22=1 AUD22=0 GEN22=0 S22SIG=2207028069`.
+- Synthetic tests cover switchlist top/middle/bottom matching, no-match
+  one-shot clear, duplicate/free button guards, one/no/active/multiple tagged
+  sectors, switch sound boundary behavior, and ticker no removal/close/reopen.
+- Generalized specials, generalized switches, generalized doors, floors,
+  plats, reusable button restoration, live input, menus, automap, save/load,
+  networking, music, real audio playback, mixer/device playback, and stage23
+  remain outside the emitted runtime.
+
+## Released Slice: source_stage23_first_button_timer_restore_probe
+
+Output:
+
+```text
+build/source_stage23_first_button_timer_restore_probe.exe
+```
+
+Goal:
+
+After stage22 proves one-shot switch texture mutation and tagged-door spawn,
+prove the reusable-button half of `P_ChangeSwitchTexture`: `useAgain=1`,
+`P_StartButton`, countdown in `P_UpdateSpecials`, texture restoration, and the
+button sound boundary. The stage22 follow-up census still found no clean MAP01
+reusable button line whose front-side texture is a source `switchlist` pair, so
+forcing MAP01 would be less honest than using a real secondary-map candidate.
+The broader pinned IWAD census found `72` reusable button-special lines with
+switchlist textures; `8` of those are door-only button specials. Stage23 should
+therefore use a real secondary-map candidate and table-emit only the bounded
+candidate metadata needed for the proof.
+
+Pinned candidate to validate first:
+
+- Map `MAP15`, linedef `3452`, special `61` (`EV_DoDoor(line, vld_open)` plus
+  `P_ChangeSwitchTexture(line, 1)`), tag `24`.
+- Front/right sidedef `4798`, one-sided line, front sector `548`, middle
+  texture `SW1COMP`.
+- Source switch pair `SW1COMP -> SW2COMP` is pair `6`; press mutates the middle
+  texture to `SW2COMP`, stores old texture `SW1COMP` in the button slot, and
+  does not clear the line special because `useAgain=1`.
+- Tag `24` resolves to sector `530`, floor `-64`, ceiling `48`, special `0`;
+  surrounding ceiling `56` gives `vld_open` topheight `52`, direction `1`,
+  speed `2`, and topwait `150`.
+- The button timer should start at `BUTTONTIME=35`. A bounded ticker run should
+  decrement it through `P_UpdateSpecials`, restore the middle texture to
+  `SW1COMP` on zero, emit/count the `sfx_swtchn` boundary, and clear the button
+  slot. Door movement may complete during the run, but generalized door systems
+  and later map progression remain outside the slice.
+
+Fallback if the pinned MAP15 candidate exposes an unexpected mismatch during
+implementation: use the stage22 `SW2COMP/SW1COMP` pair as an explicitly
+synthetic `buttonlist`/timer proof, but only after documenting the real-candidate
+failure. The preferred release remains a real secondary-map button candidate.
+
+This slice should not implement generalized plats/floors, all reusable button
+specials, all switch texture pairs at runtime, exits, live input, or broad
+audio. Its job is to make the source button timer lifecycle real enough for
+later map interaction.
+
+Source routines to read and trace/reuse:
+
+- `p_switch.c`: `P_ChangeSwitchTexture(line, 1)`, texture-slot detection,
+  `P_StartButton`, duplicate-button guard, button slot allocation, and
+  `BUTTONTIME`.
+- `p_spec.c`: the `P_UpdateSpecials` button loop, `btimer--`, texture
+  restoration by `where`, `S_StartSound(&buttonlist[i].soundorg, sfx_swtchn)`,
+  and `memset(&buttonlist[i], 0, sizeof(button_t))`.
+- `p_tick.c`: preserve stage21/source-order `P_Ticker` so button restoration
+  happens after thinkers and before `leveltime++`.
+- `s_sound.c`: keep switch-on/switch-off sound starts as bounded channel-state
+  reuse or counted deferrals; do not implement speaker playback.
+
+User-visible feature:
+
+- The executable reports preserved stage22/stage21 counters, selected button
+  source, secondary-map marker, linedef/special/tag/sidedef, texture slot,
+  texture before/pressed/restored, button slot index, timer start/end,
+  duplicate-button guard result, `P_UpdateSpecials` restoration count, selected
+  tagged door fields if the MAP15 route stays valid, switch sound
+  deferral/channel counters, and `S23SIG`.
+- It should prove exactly one button lifecycle and leave broad buttons,
+  generalized line specials, exits, floors/plats, and audio output deferred.
+
+Tests:
+
+- Synthetic `P_StartButton` tests for duplicate line rejection, free-slot
+  allocation, full-list error boundary, and top/middle/bottom restore slots.
+- Synthetic `P_UpdateSpecials` tests for no-op inactive buttons, countdown,
+  exact restore-on-zero behavior, sound boundary, and slot clearing.
+- Real-candidate census test proving MAP01 has no clean natural reusable
+  switch-texture button while the pinned IWAD contains the selected MAP15
+  candidate.
+- Pinned MAP15 reference test proving `SW1COMP -> SW2COMP -> SW1COMP`,
+  `P_StartButton` slot state, `P_UpdateSpecials` timer countdown/restoration,
+  preserved stage22/stage21 signals, and deterministic `S23SIG`.
+
+Definition of done:
+
+- `build/source_stage23_first_button_timer_restore_probe.exe` exists.
+- It launches, preserves stage22/stage21/stage20/stage19 signals, and reports
+  deterministic `S23SIG`.
+- A real reusable button candidate mutates a switch texture, starts a button
+  timer, restores the texture through the source `P_UpdateSpecials` loop, and
+  clears the button slot.
+- Speaker playback, generalized specials, all floors/plats, live input, map
+  progression, menus, automap, save/load, networking, and stage24 remain
+  deferred.
+
+Released status:
+
+- The stage23 executable launches and preserves the released stage22, stage21,
+  stage20, and stage19 signals.
+- The selected real button line is `MAP15` linedef `3452`, special `61`, tag
+  `24`, side `0`, right sidedef `4798`, left sidedef `65535`, front sector
+  `548`, with front middle texture `SW1COMP`.
+- Source switchlist lookup resolves pair `6`, switchlist index `12`, and
+  mutates `SW1COMP -> SW2COMP`; reusable activation preserves the line special
+  as `61`.
+- `P_StartButton` allocates slot `0`, stores old texture id `292` /
+  `SW1COMP`, starts timer `35`, and duplicate-line start returns the counted
+  guard result `-1`.
+- Tag `24` resolves only to sector `530`; the selected sector starts with floor
+  `-64`, ceiling `48`, special `0`, reaches neighboring ceiling `56`, and
+  spawns a `vld_open` door with topheight `52`, direction `1`, speed `2`, and
+  topwait `150`.
+- Thirty-five bounded ticker/update-special tics decrement the button timer to
+  zero, restore the middle texture to `SW1COMP`, count one switch-off sound
+  boundary, and clear the button slot. The open door reaches its top and is
+  lazily removed during the same bounded run.
+- The released stage23 signal is:
+  `S23MAP=15 S23LINE=3452 S23SPEC=61 TAG23=24 SIDE23=0 RSID23=4798 LSID23=65535 FSEC23=548 SLOT23=1 TEX230=SW1COMP TEX231=SW2COMP TEX232=SW1COMP PAIR23=6 SWI23=12 SPC231=61 BSLOT23=0 BOLD23=292 BT230=35 BT231=0 BDUP23=-1 UPD23=35 BDEC23=35 BREST23=1 BCLR23=1 BOFFSND23=1 TSEC23=530 F23=-64 C230=48 LOW23=56 TOP23=52 DIR23=1 SPD23=2 WAIT23=150 PTIC23=35 TVD23=3 MP23=3 REM23=1 LT23=35 ORDER23=1 MAP01BTN23=0 CENS23=72 DOORBTN23=8 AUD23=0 GEN23=0 FALL23=0 S24ABS=1 S23SIG=3216085132`.
+- Synthetic tests cover duplicate button rejection, free-slot allocation,
+  full-list error boundary, top/middle/bottom restore slots, inactive button
+  update no-op, countdown, exact restore-on-zero, switch-off sound boundary,
+  slot clearing, and `P_ChangeSwitchTexture(line, 1)` preservation of line
+  special.
+- Generalized specials, generalized switch systems, generalized doors,
+  generalized floors/plats, live keyboard input, menus, automap, save/load,
+  networking, music, mixer/device playback, real speaker playback, map
+  progression, and stage24 remain outside the emitted runtime.
+
+## Released Slice: source_stage24_first_floor_sector_special_probe
+
+Output:
+
+```text
+build/source_stage24_first_floor_sector_special_probe.exe
+```
+
+Goal:
+
+After stage23 makes reusable button timers real, broaden sector movement beyond
+doors by selecting exactly one floor special from a real map candidate. Re-check
+of the stage23 reusable switch-texture census shows that floor movement should
+come before platforms: `EV_DoFloor -> T_MoveFloor -> T_MovePlane` adds a
+`floormove_t` record and the floor half of the already familiar plane mover,
+without yet needing `plat_t`, `activeplats[]`, wait states, or in-stasis
+management.
+
+Pinned candidate to validate first:
+
+- Map `MAP11`, linedef `391`, special `60` (`EV_DoFloor(line,
+  lowerFloorToLowest)` plus `P_ChangeSwitchTexture(line, 1)`), tag `6`.
+- Front/right sidedef `564`, one-sided line, front sector `59`, middle texture
+  `SW1BROWN`.
+- Source switch pair should mutate `SW1BROWN -> SW2BROWN` on press, preserve
+  line special `60`, allocate one button slot, and later restore `SW1BROWN`
+  through the stage23 button timer path.
+- Tag `6` resolves to one sector, sector `57`, with floor `16`, ceiling `144`,
+  special `0`.
+- `P_FindLowestFloorSurrounding(sector 57)` reaches `-48`, so
+  `EV_DoFloor(lowerFloorToLowest)` sets direction `-1`, speed `FLOORSPEED=1`,
+  and `floordestheight=-48`.
+- Run a bounded ticker window long enough to prove repeated `T_MoveFloor ->
+  T_MovePlane` floor mutation and past-destination removal. Because the source
+  uses a strict `< dest` check, the floor reaches `-48` on tic `64`, then the
+  following tic fires the `pastdest` completion, `P_RemoveThinker`, and pstop
+  boundary; one more ticker pass proves the lazy thinker unlink. The button
+  timer still restores at tic `35`.
+
+Fallback if this candidate exposes an implementation mismatch: choose the next
+single-tag, reusable, switch-texture floor-lower candidate from the same census
+(`MAP11` line `533` or `716`) and document the rejected candidate explicitly.
+Do not silently fall back to a synthetic floor proof.
+
+Scope:
+
+- Reuse the stage23 button/switch/ticker scaffolding where practical.
+- Port only the selected `EV_DoFloor(lowerFloorToLowest)` path and one selected
+  `floormove_t` thinker/state record.
+- Add the floor branch of `T_MovePlane`, preserving source past-destination
+  clamp and `P_ChangeSector` boundary accounting.
+- Run a bounded ticker window that proves one real sector floor height mutation,
+  button restoration, `T_MoveFloor` completion, `P_RemoveThinker`, and `sfx_pstop`
+  as a deferred sound boundary.
+- Preserve stage23/stage22 signals and keep live input, map progression, real
+  speaker output, menus, automap, save/load, networking, platforms, ceilings,
+  stairs, crushers, floor texture-change families, and generalized WAD
+  compatibility deferred.
+
+Validation shape:
+
+- Synthetic tests for floor thinker setup, down movement, exact
+  past-destination clamp, inactive-sector skip, nofit/crush boundary behavior,
+  deferred move/pstop sounds, and preservation of the stage23 button lifecycle.
+- Pinned real-map test for the chosen line, switch texture/button state if
+  reused, selected sector floor sequence, bounded ticker count, floor thinker
+  removal, and deterministic `S24SIG`.
+- Build/smoke test that launches the emitted PE and proves preserved
+  stage23/stage22 signals plus the new floor movement signal.
+
+Released status:
+
+- The stage24 executable launches and preserves the released stage23, stage22,
+  stage21, stage20, and stage19 signals.
+- The selected real floor line is `MAP11` linedef `391`, special `60`, tag `6`,
+  side `0`, right sidedef `564`, left sidedef `65535`, front sector `59`, with
+  front middle texture `SW1BROWN`.
+- Source switchlist lookup resolves pair `4`, switchlist index `8`, and mutates
+  `SW1BROWN -> SW2BROWN`; reusable activation preserves line special `60`.
+- `P_StartButton` allocates slot `0`, starts timer `35`, and the stage23
+  `P_UpdateSpecials` path restores `SW1BROWN` and clears the slot.
+- Tag `6` resolves only to sector `57`; the selected sector starts with floor
+  `16`, ceiling `144`, special `0`, and `P_FindLowestFloorSurrounding` reaches
+  destination `-48`.
+- Sixty-six bounded ticker calls prove `T_MoveFloor` dispatches `65` times,
+  mutates the floor on `64` downward steps, clamps at `-48`, marks/removes the
+  floor thinker at the strict past-destination boundary, and lazily unlinks the
+  thinker on the final ticker pass.
+- The released stage24 signal is:
+  `S24MAP=11 S24LINE=391 S24SPEC=60 TAG24=6 SIDE24=0 RSID24=564 LSID24=-1 FSEC24=59 SLOT24=1 TEX240=SW1BROWN TEX241=SW2BROWN TEX242=SW1BROWN PAIR24=4 SWI24=8 SPC241=60 BSLOT24=0 BT240=35 BT241=0 BREST24=1 BCLR24=1 EVF24=1 TFIND24=2 TITER24=648 TSEC24=57 F240=16 F241=-48 C24=144 SSPEC24=0 LOWF24=-48 DEST24=-48 DIR24=-1 SPD24=1 ADD24=1 PTIC24=66 TMF24=65 MP24=65 FMUT24=64 PAST24=1 REM24=1 LREM24=1 MSND24=9 STOP24=1 LT24=66 ORDER24=1 AUD24=0 GENF24=1 GPLAT24=1 GCEIL24=1 S25ABS=1 S24SIG=1919312263`.
+- Generalized floors, platforms/lifts, ceilings/crushers, stairs, donuts,
+  floor texture-change families, live keyboard input, menus, automap,
+  save/load, networking, music, mixer/device playback, real speaker playback,
+  map progression, and stage25 remain outside the emitted runtime.
+
+## Released Slice: source_stage25_first_platform_lift_cycle_probe
+
+Output:
+
+```text
+build/source_stage25_first_platform_lift_cycle_probe.exe
+```
+
+Goal:
+
+After stage24 proves the floor half of `T_MovePlane`, add the first platform
+or lift cycle. This should be a real switch-texture reusable button candidate
+routing through `EV_DoPlat(downWaitUpStay)`, because that is the first point
+where the source needs `plat_t`, `activeplats[MAXPLATS]`, platform status
+transitions, wait counts, and active-plat removal.
+
+Re-check after stage24:
+
+- The pinned candidate still matches the WAD data and source route. The stage24
+  floor-side `T_MovePlane` subset is directly reusable for platform floor
+  movement; stage25 should add only the `plat_t` wrapper/status behavior around
+  it.
+- Source `T_MovePlane` uses strict past-destination comparisons, so the stage25
+  ticker window should account for equality-at-destination tics before
+  `pastdest` is reported, just as stage24 did.
+
+Pinned candidate to validate first:
+
+- Map `MAP12`, linedef `2304`, special `62`
+  (`EV_DoPlat(line, downWaitUpStay, 1)` plus
+  `P_ChangeSwitchTexture(line, 1)`), tag `26`.
+- Front/right sidedef `3005`, back sidedef `3004`, front sector `228`, lower
+  texture `SW1STRTN`.
+- Tag `26` resolves to one sector, sector `77`, with floor `-8`, ceiling
+  `256`, special `0`.
+- `P_FindLowestFloorSurrounding(sector 77)` reaches `-64`, so the plat starts
+  with `low=-64`, `high=-8`, `speed=PLATSPEED*4`, `wait=TICRATE*PLATWAIT=105`,
+  status `down`, and tag `26`.
+- Source switch pair resolves `SW1STRTN -> SW2STRTN` through switch pair `18`;
+  reusable activation should preserve line special `62`, allocate a button
+  slot, and restore `SW1STRTN` at tic `35`.
+- Downward movement reaches `-64` after 14 movement tics, then reports
+  `pastdest` on the following strict-comparison tic. The platform enters
+  `waiting`, sets `count=105`, and counts `sfx_pstop`.
+- Waiting decrements for 105 ticker dispatches. When the count reaches zero,
+  status changes to `up` and `sfx_pstart` is counted.
+- Upward movement reaches `-8` after 14 movement tics, then reports
+  `pastdest` on the following strict-comparison tic. Because the type is
+  `downWaitUpStay`, `P_RemoveActivePlat` should clear the active plat slot,
+  clear sector `specialdata`, mark the thinker for lazy removal, and count the
+  final `sfx_pstop` boundary.
+- A bounded window of about 136 ticker calls should be enough to prove the full
+  down-wait-up-stay lifecycle plus lazy unlink, while still avoiding perpetual
+  plats, broad lift families, and live map progression.
+
+Fallback if the pinned MAP12 candidate exposes a mismatch during
+implementation: choose the next real reusable switch-texture platform/lift
+candidate from the same census and document why line `2304` was rejected. Do
+not silently fall back to a synthetic lift.
+
+Scope:
+
+- Reuse stage24 floor-side `T_MovePlane` and stage23 button/switch timer
+  scaffolding.
+- Add only the selected `plat_t` fields and `activeplats[]` slot behavior
+  required by `downWaitUpStay`.
+- Cover `P_AddActivePlat`, selected `T_PlatRaise` statuses (`down`, `waiting`,
+  `up`), `P_RemoveActivePlat`, active-plat slot clearing, sector
+  `specialdata` clearing, lazy thinker unlink, pstart/pstop deferred sound
+  boundaries, and the stage23 button restore path.
+- Keep perpetual plats, blaze variants beyond synthetic comparison,
+  in-stasis/reactivation, floor texture-change plats, generalized lifts,
+  generalized specials, live input, map progression, and real audio output
+  deferred.
+
+Validation shape:
+
+- Synthetic tests for `EV_DoPlat(downWaitUpStay)` setup, no matching tag,
+  already-active sector skip, full `activeplats[]` boundary, slot allocation,
+  and unsupported plat types remaining absent.
+- Synthetic `T_PlatRaise` tests for strict low/high clamps, no overshoot,
+  down-to-waiting transition, wait countdown, up restart, active-plat removal,
+  lazy thinker removal, and pstart/pstop sound boundaries.
+- Pinned MAP12 tests for line `2304`, sidedefs `3005/3004`, front sector
+  `228`, target sector `77`, floor `-8 -> -64 -> -8`, speed `4`, wait `105`,
+  preserved stage24/stage23/stage22/stage21/stage20/stage19 counters, and
+  deterministic `S25SIG`.
+
+Released status:
+
+- The stage25 executable launches and preserves the released stage24, stage23,
+  stage22, stage21, stage20, and stage19 signals.
+- The selected real platform line is `MAP12` linedef `2304`, special `62`, tag
+  `26`, side `0`, right sidedef `3005`, left sidedef `3004`, front sector
+  `228`, with front lower texture `SW1STRTN`.
+- Source switchlist lookup resolves pair `18`, switchlist index `36`, and
+  mutates `SW1STRTN -> SW2STRTN`; reusable activation preserves line special
+  `62`, starts button timer `35`, and restores `SW1STRTN`.
+- Tag `26` resolves only to sector `77`; the selected sector starts with floor
+  `-8`, ceiling `256`, special `0`, and `P_FindLowestFloorSurrounding` reaches
+  low `-64`.
+- One active platform thinker is spawned with low `-64`, high `-8`, speed `4`,
+  wait `105`, status `down`, tag `26`, and activeplats slot `0`.
+- The 136 bounded ticker calls prove `135` `T_PlatRaise` dispatches, `30`
+  `T_MovePlane` calls, `28` floor mutations, strict past-destination events at
+  low and high, `105` waiting countdowns, one upward restart, active slot and
+  sector `specialdata` clearing, and one lazy unlink.
+- The released stage25 signal includes:
+  `S25MAP=12 S25LINE=2304 S25SPEC=62 TAG25=26 RSID25=3005 LSID25=3004 FSEC25=228 TEX250=SW1STRTN TEX251=SW2STRTN TEX252=SW1STRTN PAIR25=18 SWI25=36 TSEC25=77 F250=-8 F251=-8 LOW25=-64 HIGH25=-8 SPD25=4 WAIT25=105 ASLOT25=0 PTIC25=136 TPL25=135 MP25=30 PMUT25=28 PAST25=2 WT25=2 WDEC25=105 UP25=1 AREM25=1 ACLR25=1 LREM25=1 PSTART25=2 PSTOP25=2 AUD25=0 S26ABS=1 S25SIG=1688844032`.
+- Generalized platforms/lifts, generalized floors, generalized
+  ceilings/crushers, stairs, donuts, live keyboard input, menus, automap,
+  save/load, networking, music, mixer/device playback, real speaker playback,
+  map progression, and stage26 remain outside the emitted runtime.
+
+## Next Releasable Slice: source_stage26_first_ceiling_or_crusher_special_probe
+
+Output:
+
+```text
+build/source_stage26_first_ceiling_or_crusher_special_probe.exe
+```
+
+Goal:
+
+After stage25 proves platform-specific state around floor movement, add the
+first ceiling/crusher thinker. This should reuse the existing `T_MovePlane`
+ceiling branch from the door proof but route through `EV_DoCeiling ->
+T_MoveCeiling`, proving `ceiling_t`, `activeceilings[MAXCEILINGS]`, selected
+crush/lower behavior, and active-ceiling removal or reversal without a broad
+crusher system.
+
+Initial candidate notes:
+
+- A quick switch-texture ceiling census found two clean `EV_DoCeiling`
+  switch candidates in the pinned IWAD: `MAP11` linedef `3407`, special `49`,
+  tag `15`, middle texture `SW2STON1`; and `MAP29` linedef `71`, special `49`,
+  tag `40`, middle texture `SW1GSTON`.
+- Both route through `P_UseSpecialLine` case `49` to
+  `EV_DoCeiling(line, crushAndRaise)` and `P_ChangeSwitchTexture(line, 0)`.
+  Stage26 should validate the cleaner single-sector candidate first, then
+  document any rejection before switching candidates.
+- Keep the stage26 proof to one selected `crushAndRaise` or nearby lower-ceiling
+  case. Cover in-stasis reactivation, ceiling stop specials, broad crushers,
+  damage expansion, and generalized ceiling families synthetically or defer
+  them unless the selected route naturally requires a tiny piece.
+
 ## Future Backlog
 
-Likely next slices after stage12, intentionally kept as headlines:
+Likely later slices after stage26, intentionally kept as headlines:
 
-- `source_stage13_things_sprites_and_real_frame_setup`: `P_LoadThings`,
-  sprite lump metadata, first visible sprites, and real `player_t`/`mobj_t`
-  frame setup.
-- `source_stage14_game_loop_input_collision`: tic/update loop, input, movement,
-  and map collision.
-- `source_stage15_gameplay_state_and_ui`: weapons, status bar, automap/menu
-  shell, sound hooks, and enough game state to feel like Doom.
+- `source_stage27_integrated_scripted_room_interaction_loop`
+- `source_stage28_live_input_to_deterministic_game_loop_bridge`
+- `source_stage29_monster_chase_attack_and_death_drop_loop`
+- `source_stage30_projectiles_explosions_and_broader_weapon_families`
+- `source_stage31_menu_automap_intermission_and_hud_refinement`
+- `source_stage32_save_load_demo_determinism_and_longer_playthrough_smoke`
+- `source_stage33_map_progression_and_broader_wad_compatibility`
+- `source_stage34_real_audio_device_output_and_mixer_integration`
+- `source_stage35_playable_shareware-style_vertical_slice`
 
 At that point the fixed render harness can start becoming the game, not just a
 source-shaped renderer proof.
