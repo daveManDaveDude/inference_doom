@@ -179,6 +179,12 @@ def movzx_reg_byte_ptr_reg(out, dst: str | int, base: str | int) -> None:
     out.emit(bytes([0x0F, 0xB6, modrm(0, dst, base)]))
 
 
+def movzx_reg_byte_ptr_reg_disp8(
+    out, dst: str | int, base: str | int, displacement: int
+) -> None:
+    out.emit(bytes([0x0F, 0xB6, modrm(1, dst, base), displacement & 0xFF]))
+
+
 def movsx_reg_word_ptr_reg(out, dst: str | int, base: str | int) -> None:
     out.emit(bytes([0x0F, 0xBF, modrm(0, dst, base)]))
 
@@ -296,6 +302,11 @@ def dec_reg(out, reg: str | int) -> None:
 
 def dec_mem_abs32(out, label: str) -> None:
     out.emit(b"\xFF\x0D")
+    out.write_abs32(label)
+
+
+def inc_mem_abs32(out, label: str) -> None:
+    out.emit(b"\xFF\x05")
     out.write_abs32(label)
 
 

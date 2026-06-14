@@ -55,7 +55,7 @@ smaller or differently ordered step would be more honest.
 5. Keep the released debug stages as proofs, but do not build the next phase by
    piling more special cases into them.
 
-## Current Baseline: source_stage25_first_platform_lift_cycle_probe
+## Current Baseline: source_stage36_selected_dropped_shotgun_pickup_feedback_boundary
 
 The source-guided line now covers WAD/map setup, BSP setup structures,
 source-ordered BSP traversal, Doom-shaped bbox/frustum visibility, and live
@@ -223,10 +223,30 @@ active monster thinker/targeting, first weapon damage, first post-damage
 monster movement, manual door sector mutation, first sound-channel state,
 normal door ticker, first switch/tagged-door, and first reusable-button timer
 restore slices, plus the first selected lowerFloorToLowest floor thinker. It
-still stops before generalized combat, generalized monster AI/chase,
-generalized specials, generalized doors/switches, generalized floor/plat
-systems beyond the selected floor path, real audio output, generalized UI, and
-a full generalized game loop.
+now also proves one selected `downWaitUpStay` platform/lift cycle with
+`activeplats[]`, wait-state transitions, active platform removal, a bounded
+scripted room loop, a small live-input-to-`ticcmd_t` bridge, a six-tic selected
+shotgun-guy pain/chase/attack-decision state loop, changed framebuffer pixels
+after launch, runtime-selected real WAD wall/flat command-table redraws, and
+one selected shotgun psprite visual route feeding the same live renderer. It
+now carries that route through one selected hitscan impact/pain visual
+boundary, one selected shotgun-guy death visual boundary, and the first selected
+aftermath drop visual boundary: `P_DamageMobj` reaches `P_KillMobj`, the
+selected target enters `S_SPOS_DIE1` / `S_SPOS_DIE2`, the selected
+`MT_SHOTGUY -> MT_SHOTGUN` drop is materialized through a bounded
+`P_SpawnMobj`-shaped record, marked `MF_DROPPED`, and drawn from real `SHOTA0`
+WAD posts in the same runtime wall/flat/impact/death/drop/psprite order, then
+the selected dropped shotgun is touched through the bounded
+`P_TouchSpecialThing -> P_GiveWeapon(player, wp_shotgun, dropped=true)` route.
+The released pickup proof grants one shell clip and shotgun ownership, sets the
+pending weapon, reports `GOTSHOTGUN`, `sfx_wpnup`, and `bonuscount`, removes
+only the selected dropped item, and omits its posts from the final frame. It
+still stops before generalized continuous camera rendering,
+generalized combat, generalized monster AI/chase, generalized sprite traversal,
+generalized death/drop/item systems, generalized specials, generalized
+doors/switches, generalized floor/plat/ceiling families beyond the selected
+paths, real audio output, generalized UI, map progression, and a full playable
+game loop.
 
 The next milestone should keep the same discipline: port source behavior in a
 small runnable slice, not a generic rewrite and not a compiled-code shortcut.
@@ -269,6 +289,63 @@ Stage24 showed that floor movement has one subtle ticker detail worth preserving
 early: the selected lowerFloorToLowest movement reaches the destination on tic
 64, but source `T_MovePlane` reports `pastdest` only on the following strict
 comparison tic, and the lazy thinker unlink needs one more `P_RunThinkers` pass.
+Stage25 confirmed that the same strict plane timing matters once a thinker has
+state transitions: the selected lift reaches low and high on equality tics, but
+`T_PlatRaise` only changes status or removes the active platform on the next
+strict `pastdest` dispatch. It also showed that the active thinker arrays are
+worth porting as first-class state before trying to integrate a longer room
+script.
+
+Stage26 confirmed the same strict plane timing on the ceiling side while adding
+the first source-shaped `activeceilings[]` lifecycle. The selected MAP29
+`crushAndRaise` proof reaches the bottom and top on equality tics, then only
+reverses on the following strict `pastdest` dispatch. Unlike the selected
+stage25 platform, it remains active/cycling after the top reversal, so the
+runtime now proves all three representative moving-sector families
+(floor/platform/ceiling) without broad generalized sector-special systems.
+
+Stage27 integrates one of those proven ingredients into the first deliberately
+scripted, multi-sample room loop. The selected MAP12 platform button route now
+runs behind a deterministic `ticcmd_t` sequence through `G_Ticker`,
+`P_PlayerThink`, `P_UseLines`, normal `P_Ticker` ordering, `T_PlatRaise`, and
+`P_UpdateSpecials`, then reports six successive samples from the same bounded
+world instead of only one final snapshot.
+
+Stage28 preserves that non-static loop and adds the first bounded live-input
+bridge. Replay mode remains the deterministic smoke path and feeds the stage27
+script through a `G_BuildTiccmd`-shaped command builder while reporting
+`LIVE28=0`. Manual `-manual` mode reads a tiny Win32 key subset into
+Doom-shaped keydown state, builds forward/back/turn/use `ticcmd_t` fields, and
+applies the same `BT_USE` usedown edge gate while reporting live command
+counters in the title.
+
+Stage29 shows that the existing selected MAP01 shotgun-guy route can continue
+through a longer source-ordered thinker loop without broad AI. The bounded
+replay starts from the stage17/18 damaged shotgun guy, services momentum,
+recovers through pain states, retains target `0`, dispatches one `A_Chase`,
+and stops at the first honest attack-decision boundary before attack action,
+projectiles, second damage, death, or drops.
+
+Stage30 proves the first real framebuffer-after-launch motion signal: selected
+stage14 MAP01 player-view samples drive changed live framebuffer bytes on timer
+ticks, and smoke observes distinct `FB30=` signatures. The important caveat is
+that this is still a bounded runtime render bridge using emitted frame bytes,
+not a continuously recomputed Doom camera view from the full wall/plane/sprite
+renderer. The next renderer milestone should close that gap before layering on
+combat visuals.
+
+Stage31 closes that caveat for a narrow renderer subset: selected MAP01 view
+samples clear the live framebuffer and execute runtime-selected wall-column and
+flat-span command tables through emitted `R_DrawColumn`/`R_DrawSpan`-shaped
+primitives over real WAD texture and flat data. The proof is still bounded and
+command-table driven, but the changed pixels no longer come from full
+pre-rendered framebuffer copies.
+
+Stage32 proves the first combat-adjacent visual state in that live redraw path:
+selected shotgun psprite states choose real WAD patch/post command tables and
+draw after stage31 walls/flats, changing both state markers and framebuffer
+signatures. That makes the next honest boundary a selected firing consequence
+or impact visual, not another generic renderer proof.
 
 Implemented or source-proven routines:
 
@@ -404,6 +481,10 @@ Implemented or source-proven routines:
   draw commands
 - `v_video.c`: `V_DrawPatch` as a narrow emitted status patch-column path
 - `r_things.c`: `R_DrawPSprite` as a source-shaped ready weapon placement path
+- `r_segs.c` / `r_plane.c`: runtime-selected `R_DrawColumn` and
+  `R_DrawSpan` command-table replay for changed live wall/flat frames
+- `r_things.c`: selected `R_DrawPlayerSprites` / `R_DrawPSprite` shotgun
+  psprite post-table replay after the live wall/flat base
 - `p_tick.c`: `P_InitThinkers`, `P_AddThinker`, `P_RemoveThinker`, and a
   bounded `P_Ticker` thinker iteration path
 - `p_mobj.c`: `P_SpawnMapThing`, `P_SpawnMobj`, `P_SetMobjState`, and
@@ -3369,7 +3450,7 @@ Released status:
   save/load, networking, music, mixer/device playback, real speaker playback,
   map progression, and stage26 remain outside the emitted runtime.
 
-## Next Releasable Slice: source_stage26_first_ceiling_or_crusher_special_probe
+## Released Slice: source_stage26_first_ceiling_or_crusher_special_probe
 
 Output:
 
@@ -3386,34 +3467,968 @@ T_MoveCeiling`, proving `ceiling_t`, `activeceilings[MAXCEILINGS]`, selected
 crush/lower behavior, and active-ceiling removal or reversal without a broad
 crusher system.
 
-Initial candidate notes:
+Re-check after stage25:
 
-- A quick switch-texture ceiling census found two clean `EV_DoCeiling`
-  switch candidates in the pinned IWAD: `MAP11` linedef `3407`, special `49`,
-  tag `15`, middle texture `SW2STON1`; and `MAP29` linedef `71`, special `49`,
-  tag `40`, middle texture `SW1GSTON`.
-- Both route through `P_UseSpecialLine` case `49` to
-  `EV_DoCeiling(line, crushAndRaise)` and `P_ChangeSwitchTexture(line, 0)`.
-  Stage26 should validate the cleaner single-sector candidate first, then
-  document any rejection before switching candidates.
-- Keep the stage26 proof to one selected `crushAndRaise` or nearby lower-ceiling
-  case. Cover in-stasis reactivation, ceiling stop specials, broad crushers,
-  damage expansion, and generalized ceiling families synthetically or defer
-  them unless the selected route naturally requires a tiny piece.
+- Stage25 added the missing active-array lifecycle pattern for platforms. Stage26
+  should mirror that shape for `activeceilings[]` rather than broadening the
+  special dispatcher.
+- A fresh switch-texture ceiling census found two clean `EV_DoCeiling` switch
+  candidates in the pinned IWAD. `MAP11` linedef `3407`, special `49`, tag
+  `15`, lower texture `SW2STON1`, resolves two tagged sectors (`567` and
+  `583`). `MAP29` linedef `71`, special `49`, tag `40`, middle texture
+  `SW1GSTON`, resolves one tagged sector (`117`). The single-sector MAP29
+  candidate is the cleaner first release target.
+
+Pinned candidate to validate first:
+
+- Map `MAP29`, linedef `71`, special `49`
+  (`EV_DoCeiling(line, crushAndRaise)` plus
+  `P_ChangeSwitchTexture(line, 0)`), tag `40`.
+- Front/right sidedef `125`, one-sided line, front sector `75`, middle texture
+  `SW1GSTON`.
+- Source switch pair should mutate `SW1GSTON -> SW2GSTON` on press and clear
+  line special `49`, because this is a one-shot switch (`useAgain=0`).
+- Tag `40` resolves to sector `117`, with floor `192`, ceiling `304`, special
+  `0`. For `crushAndRaise`, `EV_DoCeiling` should set `crush=true`,
+  `topheight=304`, `bottomheight=floor+8=200`, `direction=-1`,
+  `speed=CEILSPEED=1`, `tag=40`, and type `crushAndRaise`.
+- The bounded ticker should prove downward ceiling movement from `304` to
+  `200` through `T_MoveCeiling -> T_MovePlane`, strict source-shaped
+  past-destination behavior after equality at bottom, reversal to direction
+  `1`, upward movement back to `304`, strict past-destination behavior after
+  equality at top, and reversal back to direction `-1`. Because
+  `crushAndRaise` is a cycling ceiling, it should not remove itself in the
+  first full cycle.
+- One additional synthetic path should cover `P_RemoveActiveCeiling` using a
+  selected removable type such as `lowerToFloor` or `raiseToHighest`, so
+  active slot clearing and sector `specialdata` clearing are proven without
+  turning the MAP29 crusher proof into a broader ceiling system.
+
+Scope:
+
+- Reuse stage21/stage24 ceiling-side `T_MovePlane` semantics and stage25
+  active-array discipline.
+- Add only the selected `ceiling_t` fields and `activeceilings[]` slot behavior
+  required for `crushAndRaise`, plus synthetic removable-ceiling coverage.
+- Count moving-ceiling sound and pstop boundaries as deferred; actual speaker
+  playback remains deferred.
+- Keep generalized ceilings/crushers, crusher damage expansion, ceiling stop
+  line families, in-stasis reactivation beyond small synthetic guards, live
+  input, map progression, menus, automap, save/load, networking, music, mixer
+  output, and stage27 absent.
+
+Fallback:
+
+If MAP29 line `71` exposes a mismatch during implementation, validate the
+documented MAP11 line `3407` candidate next and explicitly record the reason
+MAP29 failed. Do not silently fall back to a synthetic ceiling proof.
+
+Validation shape:
+
+- Synthetic `EV_DoCeiling` tests for `crushAndRaise` setup, tag traversal, no
+  matching tag, already-active sector skip, selected sector assignment,
+  activeceilings slot allocation, full-list boundary, and unsupported ceiling
+  types remaining absent from the selected runtime.
+- Synthetic `T_MoveCeiling/T_MovePlane` tests for downward movement, exact
+  bottom clamp/no overshoot, strict past-destination reversal, upward movement,
+  exact top clamp/no overshoot, repeated cycling, crush/nofit speed adjustment
+  boundary, deferred sound boundaries, synthetic active ceiling removal, and
+  preservation of the stage25 platform/button lifecycle.
+- Pinned MAP29 tests for linedef `71`, special `49`, tag `40`, sidedef `125`,
+  front sector `75`, `SW1GSTON -> SW2GSTON`, target sector `117`, ceiling
+  `304 -> 200 -> 304`, floor `192`, speed `1`, bottom `200`, active ceiling
+  allocation, reversal counts, preserved stage25 through stage19 counters, and
+  deterministic `S26SIG`.
+
+Released status:
+
+- `build/source_stage26_first_ceiling_or_crusher_special_probe.exe` exists.
+- It launches and reports preserved stage25/stage24/stage23/stage22/stage21/
+  stage20/stage19 baselines plus deterministic stage26 ceiling/crusher proof.
+- The selected MAP29 ceiling moves down and back up through source-shaped
+  `T_MoveCeiling/T_MovePlane` logic, with strict past-destination reversals and
+  active ceiling state visible in the smoke signal.
+- Generalized ceiling/crusher systems and real audio output remain deferred.
+- The released stage26 signal includes:
+  `S26MAP=29 S26LINE=71 S26SPEC=49 TAG26=40 SIDE26=0 RSID26=125 LSID26=-1 FSEC26=75 SLOT26=1 TEX260=SW1GSTON TEX261=SW2GSTON TEX262=SW2GSTON PAIR26=22 SWI26=44 SPC261=0 EVC26=1 TFIND26=2 TITER26=131 TSEC26=117 F26=192 C260=304 C261=304 SSPEC26=0 BOT26=200 TOP26=304 DIR260=-1 DIR261=-1 CRUSH26=1 SPD26=1 ASLOT26=0 ADD26=1 PTIC26=210 TMC26=210 MP26=210 CMUT26=208 PAST26=2 BREV26=1 TREV26=1 AREM26=0 ACLR26=0 LREM26=0 MSND26=27 PSTOP26=0 LT26=210 ORDER26=1 AUD26=0 GENF26=1 GPLAT26=1 GCEIL26=1 S27ABS=1 S26SIG=132405987`.
+
+## Released Slice: source_stage27_integrated_scripted_room_interaction_loop
+
+Output:
+
+```text
+build/source_stage27_integrated_scripted_room_interaction_loop.exe
+```
+
+Goal:
+
+After stage26 completes the first representative floor/platform/ceiling sector
+movement trio, stop adding isolated environment probes for one slice and
+integrate a small scripted room interaction loop. The point is not live input
+yet; it is to make one emitted executable own one runtime world, advance a
+short deterministic sequence of normal `G_Ticker` / `P_Ticker` calls, mutate
+state over time, and report multiple successive states from that same world
+instead of only reporting a final precomputed proof snapshot. This should be
+the first deliberately non-static source-guided test executable: still bounded
+and scripted, but visibly or title/log-observably changing across tics after
+launch.
+
+Re-check after stage26:
+
+- Stage24, stage25, and stage26 prove the selected floor, platform, and ceiling
+  thinkers independently, but each proof still snapshots a bounded outcome into
+  title/status data.
+- Stage21 already proved normal `P_Ticker` ordering, and stages23-26 proved
+  button/update-special interaction while other thinkers exist. Stage27 should
+  reuse that ordering in one cohesive runtime harness rather than adding a new
+  environment special.
+- A single-map script is preferable if a clean candidate exists, but a
+  documented two-probe harness is still honest if it preserves one world/ticker
+  lifecycle and exposes a multi-tic state log from emitted runtime state.
+
+Proposed shape:
+
+- Use a compact real-map script chosen from already-proven ingredients. First
+  choice: a one-map route that starts from a real player/map state, consumes a
+  short `ticcmd_t` sequence, reaches a usable line, activates one already-proven
+  sector thinker, and continues ticking until at least two distinct post-use
+  state changes are visible. If that census is not clean, use a documented
+  harness with a real movement probe and a real switch/sector probe under one
+  normal ticker loop.
+- Keep the runtime bounded and deterministic. A good first window is roughly
+  40-220 tics depending on the selected special: long enough to show switch
+  mutation, button restore if applicable, and several movement samples, but not
+  long enough to require map progression or generalized gameplay.
+- Add a small emitted tic/state strip in the framebuffer and title/status:
+  examples include `LOG27=0:closed,1:pressed,35:restored,66:floor_done` or a
+  fixed ring of sampled sector heights. The smoke test should verify multiple
+  sequential markers, not just final counters.
+- Preserve stage26 through stage19 signals and still keep live keyboard input,
+  menus, automap, map exits, save/load, networking, music, and real audio
+  device output deferred.
+- Preserve determinism: no live keyboard input, no random unscripted monster
+  behavior, no map progression, and no real audio device output.
+
+Likely source routines to re-read:
+
+- `g_game.c`: `G_Ticker` ordering and `ticcmd_t` consumption.
+- `p_user.c`: `P_PlayerThink`, `P_MovePlayer`, and script-driven use/movement
+  where the selected route needs a moving player.
+- `p_tick.c`: `P_Ticker`, `P_RunThinkers`, `P_UpdateSpecials`, and
+  `leveltime++` ordering as an integrated loop rather than isolated probes.
+- `p_map.c` / `p_maputl.c`: `P_UseLines` and path traversal from a moving
+  player position.
+- The selected environment thinker source from stages24-26, depending on the
+  chosen room script.
+- `p_switch.c`: `P_UseSpecialLine` and `P_ChangeSwitchTexture` for the selected
+  activation path.
+
+Candidate selection notes:
+
+- Prefer a real map candidate whose line special and texture pair are already
+  represented by stages22-26, because the release goal is integration rather
+  than broad special coverage.
+- Prefer a candidate where the player can reach/use the line with a very short
+  deterministic script from a source-shaped start state. Avoid routes that need
+  live turning finesse, monster interference, keys, exits, or map progression.
+- If no clean single-map route is found quickly, document the census miss and
+  use the smallest honest two-probe harness that still advances one normal
+  ticker loop and exposes changing runtime state.
+
+Validation shape:
+
+- Synthetic loop tests for order, deterministic tic count, multi-tic state log,
+  button restoration during other thinker movement, and no accidental live
+  input dependency.
+- Pinned real-map tests proving the selected script advances visible or
+  reported state across several tics, samples at least three distinct runtime
+  states, and preserves stage26 through stage19 signatures.
+- Smoke test that launches the executable and verifies multiple sequential
+  state markers, not just final-state counters.
+
+Released status:
+
+- `build/source_stage27_integrated_scripted_room_interaction_loop.exe` exists.
+- The released route uses the already-proven real `MAP12` linedef `2304`,
+  special `62`, tag `26`, front lower texture `SW1STRTN`, and target sector
+  `77`.
+- A deterministic `ticcmd_t` script issues one `BT_USE` command, then runs a
+  136-tic `G_Ticker -> P_PlayerThink -> P_UseLines/P_UseSpecialLine ->
+  P_Ticker -> P_RunThinkers -> T_PlatRaise/T_MovePlane -> P_UpdateSpecials ->
+  P_RespawnSpecials -> leveltime++` lifecycle in one bounded world.
+- The emitted title/status reports six sequential samples from that same world:
+  `LOG27=1:F-12:B34:SW2STRTN:S1:C0|14:F-64:B21:SW2STRTN:S1:C0|35:F-64:B0:SW1STRTN:S2:C85|36:F-64:B0:SW1STRTN:S2:C84|120:F-64:B0:SW1STRTN:S0:C0|136:F-8:B0:SW1STRTN:S2:C105`.
+- The executable no longer publishes only a frozen final title: after the
+  window is created it sets a `WM_TIMER` and visibly advances the title through
+  `S27 LIVE START STEP27=0`, then `STEP27=1` through `STEP27=6`, ending at
+  `TIC27=136 F27=-8 TEX27=SW1STRTN`.
+- Stage27 preserves stage26 through stage19 signatures and reports
+  `S27SIG=1735738182`.
+- Manual input, menus, automap, save/load, networking, music, speaker output,
+  map progression, generalized combat, and broader special systems remain
+  deferred.
+
+## Released Slice: source_stage28_live_input_to_deterministic_game_loop_bridge
+
+Output:
+
+```text
+build/source_stage28_live_input_to_deterministic_game_loop_bridge.exe
+```
+
+Goal:
+
+After stage27 proves a non-static scripted runtime loop, bridge real keyboard
+events into the same source-shaped `ticcmd_t` path without sacrificing
+determinism in tests. The executable should accept live movement/use controls
+for manual play in the bounded harness, while the smoke path still feeds a
+fixed command script and proves the same state markers without depending on a
+human.
+
+Re-check after stage27:
+
+- Stage27 already owns one bounded world and proves that a deterministic
+  `ticcmd_t` stream can activate a reusable platform button and expose changing
+  runtime state across tics. Its title now advances after the window is created
+  through a bounded `WM_TIMER` sequence, so it is no longer only a frozen final
+  proof snapshot.
+- The emitted executable still has no input path into the game command stream:
+  command data is deterministic and scripted, and no Win32 key state is
+  translated into `ticcmd_t` fields.
+- Stage28 should not make a full playable Doom loop yet. The honest next step
+  is a small live-control bridge that can be disabled for smoke and that feeds
+  the same command fields the stage27 script used.
+
+Likely shape:
+
+- Re-read `d_event.c`, `g_game.c`, `p_user.c`, and the existing Win32 input
+  code from the early stages.
+- Translate a small subset of keyboard events into Doom-shaped command fields:
+  forward/back, turn left/right, and use. Add strafe only if it fits without
+  disturbing the small command builder.
+- Keep two modes in one executable:
+  deterministic replay mode for smoke, which replays the stage27 script and
+  must produce the same `LOG27` markers; and manual mode, enabled by an
+  explicit command-line flag or visible toggle, which reads Win32 key state and
+  builds live `ticcmd_t` records.
+- Reuse the MAP12 room route from stage27. The manual path should let a user
+  press use to activate the same platform button, then observe the same ticker
+  lifecycle. Movement may be represented in title/status/player fields even if
+  the renderer remains debug-oriented.
+- Preserve the stage27 post-launch stepping behavior. Replay mode should still
+  show a start state, advance through visible runtime markers after window
+  creation, and only then report its final deterministic signature.
+- Keep the emitted status/title explicit about mode, command counts, use-edge
+  counts, and whether live input was enabled. Scripted smoke should report
+  `LIVE28=0`; manual runs can report `LIVE28=1`.
+- Do not add menus, automap, save/load, map progression, networking, broad
+  combat, generalized specials, or real audio device output. The release is the
+  input bridge into the existing loop, not a playable vertical slice yet.
+
+Source routines to re-read:
+
+- `d_event.c`: event input path and key up/down semantics.
+- `g_game.c`: `G_BuildTiccmd`, `G_Ticker`, `gamekeydown[]`, and command
+  replay/demo consistency details.
+- `p_user.c`: `P_PlayerThink`, `P_MovePlayer`, `P_Thrust`, and `BT_USE`
+  `usedown` gating.
+- Existing Win32 message/input code in the early emitted window stages.
+- Stage27 emitter/test code for the deterministic replay contract.
+
+Validation shape:
+
+- Synthetic command-building tests for key down/up state, forward/back/turn/use
+  command fields, use-edge gating, and deterministic replay override.
+- Synthetic tests proving replay mode ignores live key state and manual mode
+  can emit `BT_USE`.
+- Pinned smoke test that replays the stage27 script through the same input
+  bridge, observes both the post-launch start marker and final replay marker,
+  reaches the same state log/signature, preserves stage27 through stage19
+  signatures, and reports no speaker output or map progression.
+- Build inspection proving the stage28 executable contains stage28 status
+  strings but does not contain stage29 strings.
+- Manual run note documenting the small live-control harness and deferred
+  systems.
+
+Released status:
+
+- `build/source_stage28_live_input_to_deterministic_game_loop_bridge.exe`
+  exists and launches.
+- Replay mode is the deterministic smoke path and reports `LIVE28=0`. It
+  replays the stage27 MAP12 script through
+  `G_BuildTiccmd_stage28_live_or_replay_bridge_source_shape_debug`, ignores a
+  synthetic live key state during the reference proof, and reproduces the
+  stage27 route/signature:
+  `LOG27=1:F-12:B34:SW2STRTN:S1:C0|14:F-64:B21:SW2STRTN:S1:C0|35:F-64:B0:SW1STRTN:S2:C85|36:F-64:B0:SW1STRTN:S2:C84|120:F-64:B0:SW1STRTN:S0:C0|136:F-8:B0:SW1STRTN:S2:C105`
+  and `R28SIG=1735738182`.
+- The post-launch title sequence is preserved under stage28 markers: it starts
+  at `S28 REPLAY START STEP28=0 LIVE28=0`, advances through `STEP28=1..6`,
+  and ends at `TIC28=136 F28=-8 TEX28=SW1STRTN`.
+- Manual mode is enabled with `-manual`. It reads bounded Win32 key
+  down/up state for W/S/up/down forward/back, A/D/left/right turn, and
+  E/Space use. The manual timer builds live `ticcmd_t` fields and reports
+  `LIVE28=1`, `FM28`, `AT28`, `BTN28`, `BTUSE28`, `USEEDGE28`, and key-event
+  counters in the title.
+- Stage28 preserves stage27 through stage19 signatures and reports
+  `S28SIG=2805406010`.
+- Menus, automap, save/load, networking, music, real speaker output,
+  mixer/device playback, map progression, generalized combat, broad AI, and
+  broader special systems remain deferred.
+
+## Released Slice: source_stage29_selected_monster_chase_attack_state_loop
+
+Output:
+
+```text
+build/source_stage29_selected_monster_chase_attack_state_loop.exe
+```
+
+Goal:
+
+After stage28 lets commands enter the bounded loop through either replay or
+manual input, return to gameplay state and integrate the first longer selected
+monster loop. Stage29 continues the stage16-18 MAP01 shotgun-guy route after
+the selected nonlethal shotgun hit: the monster services momentum, recovers
+through pain states, retains its target, dispatches one `A_Chase`, and stops at
+the first source-honest attack-decision boundary.
+
+Re-check after stage28:
+
+- Stage28 proved command ingress, not full play. Manual input can produce
+  Doom-shaped movement/use fields, but replay remains the correct validation
+  path for any gameplay state that needs deterministic smoke.
+- Stages16-18 already provide the ingredients for one selected MAP01 shotgun
+  guy: `A_Look`/target acquisition, one nonlethal shotgun damage mutation, and
+  one post-damage momentum move before chase logic resumes.
+- Stage17's shotgun route is a strong candidate because it is already
+  source-shaped and deterministic, but a full kill/drop may require multiple
+  repeated weapon cycles, psprite timing, pain/chase interleaving, and possibly
+  more monster action code than one narrow release should absorb.
+- The next slice should therefore be named and scoped around the selected
+  monster state loop, not promise a death/drop unless the first source pass
+  shows it falls out naturally.
+
+Released shape:
+
+- The emitted tool is
+  `tools/emit_source_stage29_selected_monster_chase_attack_state_loop.py`.
+- The deterministic replay path builds one bounded reference world from the
+  selected stage17/18 MAP01 shotgun-guy state and advances six tics through:
+  `G_Ticker`, `P_PlayerThink`/`P_MovePsprites`, `P_Ticker`,
+  `P_RunThinkers`, and `P_MobjThinker`.
+- The selected monster log is:
+  `1:S_SPOS_PAIN:T2:XY1751,-938:M-20103,-71466:TG0:H20:TH100:CH0:AB0|2:S_SPOS_PAIN:T1:XY1751,-939:M-18219,-64767:TG0:H20:TH100:CH0:AB0|3:S_SPOS_PAIN2:T3:XY1751,-940:M-16511,-58696:TG0:H20:TH100:CH0:AB0|4:S_SPOS_PAIN2:T2:XY1750,-941:M-14964,-53194:TG0:H20:TH100:CH0:AB0|5:S_SPOS_PAIN2:T1:XY1750,-941:M-13562,-48208:TG0:H20:TH100:CH0:AB0|6:S_SPOS_RUN1:T3:XY1750,-942:M-12291,-43689:TG0:H20:TH99:CH1:AB1`.
+- The first honest boundary is `ATTACK_DECISION`: `A_Chase` reaches the
+  selected missile-range/attack-state dispatch point, then the release stops
+  before attack action execution, projectiles, additional damage, death, or
+  drop handling.
+- The post-launch title still advances under a timer. It starts at
+  `S29 REPLAY START STEP29=0 LIVE29=0`, steps through six replay samples, and
+  ends at `STEP29=6`, `TIC29=6`, `ST29=S_SPOS_RUN1`, `AB29=1`,
+  `BOUND29=ATTACK_DECISION`, `S30ABS=1`, and `S29SIG=3738922932`.
+
+Validation shape:
+
+- Synthetic tests cover selected mobj state transitions, source-shaped ticker
+  ordering, target retention, chase/action dispatch, and the fact that this
+  route includes no new damage/death/drop boundary.
+- Absence tests keep broad AI, projectiles, infighting, generalized combat,
+  pickups, exits, map progression, real audio, runtime rendered motion, and
+  stage30 outside this slice.
+- The pinned real-map replay proves six changing monster samples and preserves
+  stage28 through stage19 signatures.
+- The executable build/smoke test verifies the PE launches, reports stage29
+  markers/log/signature, preserves baselines, and contains no `source_stage30`
+  strings.
+
+Released status:
+
+- `build/source_stage29_selected_monster_chase_attack_state_loop.exe` exists
+  and launches.
+- The selected monster follows the six-tic source-shaped route through
+  `ATTACK_DECISION`.
+- The replay path is deterministic and stage28 live input remains optional and
+  isolated from smoke.
+- Stage29 reports `S29SIG=3738922932`.
+- Stage28 through stage19 baselines are preserved:
+  `S28SIG=2805406010`, `S27SIG=1735738182`, `S26SIG=132405987`,
+  `S25SIG=1688844032`, `S24SIG=1919312263`, `S23SIG=3216085132`,
+  `S22SIG=2207028069`, `S21SIG=1770773845`, `S20SIG=3226031347`, and
+  `S19SIG=2088411722`.
+- Runtime rendered motion, projectiles, explosions, generalized combat, broad
+  AI, map progression, UI systems, and real audio remain deferred.
+
+## Released Slice: source_stage30_runtime_rendered_motion_bridge
+
+Output:
+
+```text
+build/source_stage30_runtime_rendered_motion_bridge.exe
+```
+
+Goal:
+
+After stage29 adds another moving gameplay state loop, connect one bounded
+runtime state change back into the existing renderer so the executable has
+actual changing framebuffer pixels, not only changing title/status text. This
+is the first non-static visual proof in the source-guided line: a timer-driven
+replay advances selected MAP01 player-view samples, replaces the live
+framebuffer from updated source-shaped fields, invalidates the Win32 window,
+and the smoke test observes changing pixel signatures across frames.
+
+Re-check after stage29:
+
+- Stage27 and stage28 already visibly advance title text after launch, and
+  stages24-26 prove real moving sector state. Stage29 proves real selected
+  monster state mutation. The framebuffer itself is still effectively a fixed
+  proof image.
+- Earlier renderer stages already know how to draw source-shaped walls, flats,
+  sky, masked midtextures, sprites, and the selected debug frame from emitted
+  x86 plus table-emitted WAD data. The missing bridge is not a broader renderer;
+  it is using updated runtime fields as the frame input and repainting more than
+  once.
+- A moving player-view proof is likely the cleanest first candidate because
+  earlier MAP01 renderer/player-movement stages already agree on map, player
+  start, view fields, BSP traversal, and framebuffer signatures. It avoids
+  proving dynamic sector visibility at the same time as proving redraw.
+- A moving-sector proof remains a strong fallback if a fixed MAP12 viewpoint
+  can see sector `77` move with a small renderer input change, but it may need
+  more sector-plane/wall-height plumbing than a player-view redraw.
+- A moving-monster visual proof is probably one stage too early: stage29 changes
+  monster state and position, but the renderer would need dynamic sprite
+  placement, state frame selection, and possibly occlusion interactions at the
+  same time as the first redraw bridge.
+
+Implemented shape:
+
+- The emitted tool is
+  `tools/emit_source_stage30_runtime_rendered_motion_bridge.py`.
+- Stage30 reuses the stage14 MAP01 deterministic player movement route and
+  selects three source-shaped samples from tics `0`, `4`, and `7`.
+- Each sample maps `viewx`, `viewy`, `viewz`, and `viewangle` into a bounded
+  runtime render bridge, clears/replaces the live framebuffer bytes, records
+  clear/redraw ordering, invalidates the Win32 window, and reports a per-frame
+  framebuffer signature.
+- The timer-driven replay after launch is:
+  `S30 RENDER START STEP30=0` -> `STEP30=1` -> `STEP30=2` -> `STEP30=3`.
+- The selected frame log is:
+  `1:T0:VX-192:VY-192:A0:FB2289904038|2:T4:VX-182:VY-192:A1:FB2221072019|3:T7:VX-172:VY-194:A3:FB169445058`.
+- The stage30 bridge keeps stage28's Win32 framebuffer paint path and uses
+  direct x86 `rep movsd` copies from emitted frame bytes into the live
+  framebuffer on timer ticks. No new x86 helper was needed.
+- Projectiles, explosions, generalized combat, broad AI, generalized specials,
+  map progression, UI systems, real audio playback, and stage31 remain
+  deferred.
+
+Validation shape:
+
+- Synthetic tests cover frame-step ordering, selected runtime state to render
+  input mapping, framebuffer clear/redraw ordering, and distinct
+  frame-signature expectations.
+- The pinned real-map replay proves three changed view/render inputs and three
+  distinct framebuffer signatures.
+- Build inspection proves the emitted executable contains stage30 strings and
+  no `source_stage31` strings.
+- Scripted smoke launches the executable, observes the start marker, waits for
+  the three rendered-frame markers/signatures, proves at least two distinct
+  `FB30=` values after launch, and closes cleanly.
+- Preservation tests cover stage29/stage28 through stage19 signatures.
+
+Released status:
+
+- `build/source_stage30_runtime_rendered_motion_bridge.exe` exists and
+  launches.
+- Stage30 reports `S30SIG=3898523864`.
+- The runtime framebuffer signatures are distinct:
+  `FB30=2289904038`, `FB30=2221072019`, and `FB30=169445058`.
+- Stage29 through stage19 baselines are preserved:
+  `S29SIG=3738922932`, `S28SIG=2805406010`, `S27SIG=1735738182`,
+  `S26SIG=132405987`, `S25SIG=1688844032`, `S24SIG=1919312263`,
+  `S23SIG=3216085132`, `S22SIG=2207028069`, `S21SIG=1770773845`,
+  `S20SIG=3226031347`, and `S19SIG=2088411722`.
+
+## Released Slice: source_stage31_runtime_real_renderer_motion_bridge
+
+Output:
+
+```text
+build/source_stage31_runtime_real_renderer_motion_bridge.exe
+```
+
+Goal:
+
+After stage30 proves that runtime state can drive changing framebuffer pixels,
+replace the bounded debug-frame bridge with the smallest honest runtime bridge
+back into the existing real renderer path. The goal is a non-static executable
+whose changing pixels are produced by re-running source-shaped renderer
+primitives from changed `viewx`, `viewy`, and `viewangle`, not by copying
+pre-emitted full-frame byte arrays.
+
+Re-check after stage30:
+
+- Stage30 accomplished the first post-launch pixel proof, but it did so by
+  table-emitting complete framebuffer samples and copying them with `rep movsd`.
+  That was a useful bridge, not the destination.
+- Earlier renderer stages already have source-shaped wall column, composite
+  texture, flat span, sky, masked midtexture, and sprite paths. Most of that
+  work is still fixed-view or pre-derived in Python, so stage31 should select
+  the narrowest piece that can be recomputed for several runtime view samples.
+- The cleanest first target is still the stage14 MAP01 player movement route:
+  three to five samples from the same deterministic path, but the framebuffer
+  signatures must come from regenerated render commands or runtime render loops
+  keyed by the changed view fields.
+- Combat visuals should wait one slice. Stage29 gives useful monster state, but
+  adding dynamic sprite state while the camera redraw path is still a full-frame
+  copy would blur what the release proves.
+
+Implemented shape:
+
+- The emitted tool is
+  `tools/emit_source_stage31_runtime_real_renderer_motion_bridge.py`.
+- Stage31 reuses the stage14 MAP01 deterministic player movement route and
+  selects the same three view samples from tics `0`, `4`, and `7`.
+- Python derives compact per-sample wall-column and flat-span command tables
+  from the existing source-shaped renderer data. It does not emit finished
+  stage31 framebuffer byte arrays.
+- On each timer tick, the executable copies the selected source-shaped view
+  fields, clears the live framebuffer, selects that sample's command table,
+  executes the existing `R_DrawColumn`-shaped and `R_DrawSpan`-shaped x86 draw
+  primitives, computes a runtime framebuffer signature, invalidates/updates the
+  Win32 window, and reports draw counters.
+- The timer-driven replay after launch is:
+  `S31 REALRENDER START STEP31=0` -> `STEP31=1` -> `STEP31=2` -> `STEP31=3`.
+- The selected runtime renderer command log is:
+  `1:T0:VX-192:VY-192:A0:WC780:SP169:FB2926869513|2:T4:VX-182:VY-192:A1:WC776:SP169:FB622680457|3:T7:VX-172:VY-194:A3:WC769:SP169:FB1677820087`.
+- Stage12 sky/masked paths and stage13 sprite posts are deferred from this
+  smallest honest release; stage31 proves changed real WAD-rendered wall/flat
+  pixels from runtime-selected render commands.
+- Projectiles, explosions, combat expansion, dynamic monster animation, menus,
+  automap, save/load, map progression, broad special systems, and real audio
+  playback remain deferred.
+
+Validation shape:
+
+- Synthetic tests cover frame-step ordering, selected runtime-state to
+  renderer-input mapping, render-command table selection,
+  framebuffer clear/draw/present ordering, distinct frame-signature
+  expectations, and absence flags.
+- The pinned MAP01 replay proves three changed view/render inputs, three
+  distinct command tables, and three distinct framebuffer signatures after
+  launch.
+- Build inspection proves the stage31 executable contains stage31 strings, no
+  `source_stage32` strings, no stage31 full-frame copy routine, and no `rep
+  movsd` full-frame motion opcode in the stage31 image.
+- Preservation tests cover stage30/stage29 through stage19 signatures.
+
+Released status:
+
+- `build/source_stage31_runtime_real_renderer_motion_bridge.exe` exists and
+  launches.
+- Stage31 reports `S31SIG=3593583171`.
+- The runtime real-renderer framebuffer signatures are distinct:
+  `FB31=2926869513`, `FB31=622680457`, and `FB31=1677820087`.
+- Stage30 through stage19 baselines are preserved:
+  `S30SIG=3898523864`, `S29SIG=3738922932`, `S28SIG=2805406010`,
+  `S27SIG=1735738182`, `S26SIG=132405987`, `S25SIG=1688844032`,
+  `S24SIG=1919312263`, `S23SIG=3216085132`, `S22SIG=2207028069`,
+  `S21SIG=1770773845`, `S20SIG=3226031347`, and `S19SIG=2088411722`.
+
+## Planning Checkpoint After Stage32
+
+Where we are:
+
+- Stage31 proved changed real WAD wall/flat pixels after launch by selecting
+  compact renderer command tables at runtime.
+- Stage32 preserves that live wall/flat bridge and adds one selected
+  combat-adjacent visual route: shotgun weapon psprite states select compact
+  patch/post command tables and draw them after the stage31 walls/flats.
+- The proof is still intentionally narrow. It does not run generalized sprite
+  sorting/traversal, broad monster AI, projectiles, explosions, attack
+  execution, damage/death/drop, map progression, UI systems, or real audio.
+- The next bottleneck is no longer "can a gameplay/weapon state change live
+  pixels?" Stage32 answered that for one selected psprite route. The next
+  bottleneck is a single selected action/effect boundary without expanding into
+  broad combat.
+
+## Released Slice: source_stage32_selected_combat_visual_state_bridge
+
+Output:
+
+```text
+build/source_stage32_selected_combat_visual_state_bridge.exe
+```
+
+Goal:
+
+Connect one selected combat-adjacent visual state to the stage31 live renderer
+path without adding broad combat. The released route uses selected player
+shotgun psprite states (`S_SGUN`, `S_SGUN3`, `S_SGUN4`) and real WAD patch
+posts (`SHTGA0`, `SHTGB0`, `SHTGC0`) drawn after the stage31 wall/flat base.
+
+Released shape:
+
+- Preserves the stage31 wall/flat runtime redraw bridge as the base frame.
+- Adds selected `R_DrawPlayerSprites` / `R_DrawPSprite`-shaped post command
+  tables for one shotgun psprite route.
+- Runtime replay selects three deterministic samples from tics `0`, `4`, and
+  `7`, updates selected psprite state/frame/patch markers, clears the
+  framebuffer, draws stage31 walls/flats, draws selected psprite posts, signs
+  the framebuffer, and presents.
+- The selected psprite post counts are `66`, `96`, and `135`; selected psprite
+  pixel counts are `2083`, `5906`, and `7493`.
+- Generalized sprite sorting/traversal, thing sprite systems, projectile
+  actors, explosion states, monster attack execution, damage/death/drop logic,
+  HUD weapon systems, menus, automap, save/load, map progression, broad
+  specials, and real audio remain deferred.
+
+Validation shape:
+
+- Synthetic tests cover frame-step ordering, selected state-to-render-frame
+  mapping, selected patch/post command generation, runtime command-table
+  selection, clear/wall-flat/psprite/present ordering, distinct framebuffer
+  signatures, absence flags, no full-frame byte-array motion, and preservation
+  of stage31 through stage19 signatures.
+- The pinned replay proves the stage31 base signatures remain
+  `2926869513`, `622680457`, and `1677820087`, then the selected psprite pass
+  changes them to `2997224612`, `3655441960`, and `2243530028`.
+- Build/smoke proves the executable launches, reports stage32 markers and
+  selected psprite counters, contains no `source_stage33` strings, and still
+  has no full-frame byte-copy motion mechanism.
+
+Released status:
+
+- `build/source_stage32_selected_combat_visual_state_bridge.exe` exists and
+  launches.
+- Stage32 reports `S32SIG=533488475`.
+- The runtime framebuffer signatures with selected psprite contribution are
+  distinct: `FB32=2997224612`, `FB32=3655441960`, and `FB32=2243530028`.
+- Stage31 through stage19 baselines are preserved:
+  `S31SIG=3593583171`, `S30SIG=3898523864`, `S29SIG=3738922932`,
+  `S28SIG=2805406010`, `S27SIG=1735738182`, `S26SIG=132405987`,
+  `S25SIG=1688844032`, `S24SIG=1919312263`, `S23SIG=3216085132`,
+  `S22SIG=2207028069`, `S21SIG=1770773845`, `S20SIG=3226031347`, and
+  `S19SIG=2088411722`.
+
+## Released Slice: source_stage33_selected_hitscan_impact_visual_boundary
+
+Output:
+
+```text
+build/source_stage33_selected_hitscan_impact_visual_boundary.exe
+```
+
+Released shape:
+
+- Preserve the stage31 wall/flat runtime renderer and the stage32 selected
+  shotgun psprite post draw.
+- Reuse the stage17 selected `A_FireShotgun` / `P_LineAttack` /
+  `P_DamageMobj` route for the selected MAP01 shotgun-guy target:
+  mapthing `37`, mobj `28`, selected damage `10`, target health after hit
+  `20`.
+- Draw the bounded selected shotgun-guy pain-state world sprite route after
+  walls/flats and before the selected shotgun psprite posts. The selected WAD
+  sprite lump is `SPOSG1`, mapped through `S_SPOS_PAIN` and `S_SPOS_PAIN2`.
+- Keep generalized sprite traversal/sorting deferred; the stage33 proof emits
+  one selected world post table and stops.
+- Runtime order is explicit:
+  setup view/frame -> clear -> walls/flats -> selected world pain posts ->
+  selected psprite posts -> signature -> present.
+- Stage33 reports `S33SIG=1614948054`.
+- Stage33 framebuffer signatures are `2997224612`, `3695204165`, and
+  `1535635467`; the impact-stage intermediate signatures are `2926869513`,
+  `330358001`, and `1300993588`.
+- Stage32 through stage19 baselines are preserved:
+  `S32SIG=533488475`, `S31SIG=3593583171`, `S30SIG=3898523864`,
+  `S29SIG=3738922932`, `S28SIG=2805406010`, `S27SIG=1735738182`,
+  `S26SIG=132405987`, `S25SIG=1688844032`, `S24SIG=1919312263`,
+  `S23SIG=3216085132`, `S22SIG=2207028069`, `S21SIG=1770773845`,
+  `S20SIG=3226031347`, and `S19SIG=2088411722`.
+- Projectiles, explosions, monster attack execution, monster death/drop,
+  generalized combat, broad AI, generalized sprite systems, generalized
+  specials, map progression, UI systems, real audio, and stage34 remain
+  deferred.
+
+## Planning Checkpoint After Stage34
+
+Where we are:
+
+- Stage31 proved runtime-selected wall/flat renderer command tables can redraw
+  real WAD pixels after launch without copying full framebuffer byte arrays.
+- Stage32 proved one selected shotgun psprite route can draw live patch posts
+  after that wall/flat base.
+- Stage33 crossed one gameplay/visual boundary: the selected stage17 shotgun
+  hit route now produces a visible selected world consequence, using bounded
+  shotgun-guy pain-state posts between the wall/flat base and psprite overlay.
+- Stage34 crosses the next single selected combat/visual boundary: the selected
+  MAP01 shotgun-guy route reaches a bounded lethal `P_DamageMobj` /
+  `P_KillMobj` / `P_SetMobjState` transition, then draws selected
+  `S_SPOS_DIE1` and `S_SPOS_DIE2` world posts from real WAD sprite data after
+  the preserved stage33 impact/pain posts and before the stage32 psprite
+  overlay.
+- We still do not have generalized sprite traversal/sorting, a generalized
+  combat loop, generalized death/drop behavior, real thing removal, item
+  pickup feedback, statusbar integration, map progression, menus, automap,
+  save/load, networking, music, mixer/device audio, or a broad live game loop.
+
+Next bottleneck:
+
+- The narrowest honest next proof is the selected drop spawn/visual boundary,
+  not pickup yet. Source `P_KillMobj` maps `MT_SHOTGUY -> MT_SHOTGUN`, calls
+  `P_SpawnMobj(target->x, target->y, ONFLOORZ, MT_SHOTGUN)`, then marks the
+  spawned item with `MF_DROPPED`. Stage34 observed that as a deferred counter
+  but deliberately did not materialize or draw the dropped thing.
+- Pickup feedback is the next boundary after that. `P_TouchSpecialThing` and
+  `P_GiveWeapon` treat `MF_DROPPED` weapons specially, and touching the item
+  introduces player inventory/ammo/message/sound effects. That is enough new
+  source behavior to keep it out of the drop-spawn visual slice unless the
+  drop implementation proves pickup is truly trivial.
+
+## Released Slice: source_stage34_selected_hitscan_death_visual_boundary
+
+Output:
+
+```text
+build/source_stage34_selected_hitscan_death_visual_boundary.exe
+```
+
+Released shape:
+
+- Reuses the stage17 selected shotgun target and the stage33 bounded impact/pain
+  world-post draw route.
+- Drives a tightly bounded selected lethal probe from target health `20` with
+  lethal damage `20`, total selected damage `30`, one selected kill event, one
+  selected death-state set, and one observed/deferred shotgun-guy drop counter.
+- Draws three deterministic post-launch samples at tics `0`, `4`, and `7`:
+  no death frame, `S_SPOS_DIE1` / `SPOSH0`, then `S_SPOS_DIE2` / `SPOSI0`.
+- Runtime order is explicit:
+  setup view/frame -> clear -> walls/flats -> selected stage33 impact/pain
+  posts -> selected stage34 death posts -> selected stage32 psprite posts ->
+  signature -> present.
+- The selected death post counts are `0`, `79`, and `91`; selected death pixel
+  counts are `0`, `1075`, and `1013`.
+- Stage31 wall/flat base signatures remain `2926869513`, `622680457`, and
+  `1677820087`; preserved stage33 impact intermediate signatures remain
+  `2926869513`, `330358001`, and `1300993588`; the new death intermediate
+  signatures are `2926869513`, `1191322670`, and `2513680424`; final
+  framebuffer signatures are `2997224612`, `2851578387`, and `1194192847`.
+- Stage34 reports `S34SIG=4027590938`.
+- Stage33 through stage19 baselines are preserved:
+  `S33SIG=1614948054`, `S32SIG=533488475`, `S31SIG=3593583171`,
+  `S30SIG=3898523864`, `S29SIG=3738922932`, `S28SIG=2805406010`,
+  `S27SIG=1735738182`, `S26SIG=132405987`, `S25SIG=1688844032`,
+  `S24SIG=1919312263`, `S23SIG=3216085132`, `S22SIG=2207028069`,
+  `S21SIG=1770773845`, `S20SIG=3226031347`, and `S19SIG=2088411722`.
+- Build/smoke proves the executable launches, advances selected death visual
+  samples after launch, contains no `source_stage35` strings, and still uses
+  compact runtime renderer command tables rather than full pre-rendered
+  framebuffer arrays.
+- Item pickup, generalized death/drop, projectiles, explosions, broad monster
+  AI, generalized combat, generalized sprite systems, map progression, UI
+  systems, and real audio remain deferred.
+
+## Released Slice: source_stage35_selected_dropped_shotgun_visual_boundary
+
+Output:
+
+```text
+build/source_stage35_selected_dropped_shotgun_visual_boundary.exe
+```
+
+Released goal:
+
+After stage34 proves one selected target can visibly die, cross the next
+single aftermath boundary: the selected `P_KillMobj` shotgun-guy route
+materializes its dropped shotgun through a bounded `P_SpawnMobj`-shaped record,
+marks it `MF_DROPPED`, and draws one selected dropped-item world post from real
+WAD data. This should still be a single selected route, not a generalized item
+or death/drop system.
+
+Released shape:
+
+- Preserve the stage31 wall/flat redraw path, the stage33 impact/pain route,
+  the stage34 death route, and the stage32 shotgun psprite path.
+- Reuse the exact selected stage34 kill context: selected target mapthing `37`,
+  mobj `28`, corpse position, death state, and deferred drop counter.
+- Adds only the selected source-shaped drop creation needed by
+  `P_KillMobj`: `MT_SHOTGUY -> MT_SHOTGUN`, `P_SpawnMobj` at the killed
+  target's `x/y`, `ONFLOORZ`, `spawnstate=S_SHOT`, sprite `SPR_SHOT`, and
+  `MF_DROPPED`.
+- Draws the selected dropped shotgun after selected death posts and before the
+  selected psprite overlay, using compact real WAD `SHOTA0` sprite-post command
+  tables. The released visual sequence is: no drop, first visible death+drop
+  frame, and next death+drop frame.
+- Keep pickup deferred. Do not execute `P_TouchSpecialThing`, `P_GiveWeapon`,
+  ammo/weapon grant, pickup message, item removal, respawn queue, or broad
+  inventory/statusbar systems in stage35.
+- Keeps runtime order explicit and measurable:
+  setup -> clear -> walls/flats -> selected impact/pain posts -> selected
+  death posts -> selected dropped-shotgun posts -> selected psprite posts ->
+  signature -> present.
+- The selected dropped shotgun is visible from the selected camera, so no
+  alternate sample position was needed.
+
+Validation status:
+
+- Stage35 reports `S35SIG=3270148876`.
+- The selected drop command counts are `0`, `44`, and `44`; selected drop pixel
+  counts are `0`, `284`, and `284`.
+- Preserved stage34 death intermediate signatures remain `2926869513`,
+  `1191322670`, and `2513680424`; the new drop intermediate signatures are
+  `2926869513`, `3057214504`, and `3299982258`; final framebuffer signatures
+  are `2997224612`, `1668066382`, and `4078405109`.
+- Stage34 through stage19 baselines are preserved, including
+  `S34SIG=4027590938`, `S33SIG=1614948054`, `S32SIG=533488475`,
+  `S31SIG=3593583171`, `S30SIG=3898523864`, `S29SIG=3738922932`,
+  `S28SIG=2805406010`, `S27SIG=1735738182`, `S26SIG=132405987`,
+  `S25SIG=1688844032`, `S24SIG=1919312263`, `S23SIG=3216085132`,
+  `S22SIG=2207028069`, `S21SIG=1770773845`, `S20SIG=3226031347`, and
+  `S19SIG=2088411722`.
+- Synthetic tests cover selected `P_KillMobj` drop ordering,
+  `P_SpawnMobj` field initialization, `MF_DROPPED`, state-to-render-frame
+  mapping, dropped-shotgun patch/post command generation, runtime command-table
+  selection, clear/wall-flat/impact/death/drop/psprite/present ordering,
+  distinct framebuffer signatures with drop contribution, no full-frame byte
+  arrays, deferred pickup/item/inventory systems, and preservation signatures.
+- The smoke test launches the executable, observes the stage35 replay markers,
+  proves distinct `FB35=` signatures, sees `DROP35=S_SHOT`,
+  `DRPATCH35=SHOTA0`, `DRC35=44`, and `DRP35=284`, and verifies no
+  `source_stage36` strings are present.
+
+## Released Slice: source_stage36_selected_dropped_shotgun_pickup_feedback_boundary
+
+Output:
+
+```text
+build/source_stage36_selected_dropped_shotgun_pickup_feedback_boundary.exe
+```
+
+Released goal:
+
+After stage35 materializes and draws the selected dropped shotgun, connect
+exactly one selected touch/pickup feedback boundary. The target route is the
+same dropped `MT_SHOTGUN` item from the killed shotgun guy through
+`P_TouchSpecialThing -> P_GiveWeapon(player, wp_shotgun, dropped=true)`, with a
+bounded player-feedback result and a clear before/after render or state
+signature. This is still not a broad inventory, HUD, item traversal, or respawn
+system.
+
+Released shape:
+
+- Preserve the stage31 wall/flat, stage33 impact/pain, stage34 death, stage35
+  dropped-shotgun, and stage32 psprite paths.
+- Reuse the exact stage35 selected drop record: `SPR_SHOT`, `S_SHOT`,
+  `MT_SHOTGUN`, `MF_SPECIAL | MF_DROPPED`, floor-z placement at the selected
+  corpse position, and real `SHOTA0` visual posts.
+- Triggers only the selected touch gate with a tightly reported one-item
+  contact probe: `delta = special->z - toucher->z`, reject if outside
+  `toucher->height` or below `-8*FRACUNIT`, require a live toucher, then switch
+  on `special->sprite == SPR_SHOT`.
+- Applies only the dropped-shotgun branch of `P_GiveWeapon`: call-equivalent
+  `P_GiveWeapon(player, wp_shotgun, dropped=true)`, give one ammo clip via
+  `weaponinfo[wp_shotgun].ammo`, set `weaponowned[wp_shotgun]` and
+  `pendingweapon` only if not already owned, and report whether ammo, weapon,
+  or both were granted.
+- Removes the selected item if and only if `P_GiveWeapon` returns true. The
+  released proof succeeds and `P_RemoveMobj` clears the selected dropped item
+  from the final frame.
+- Adds one compact feedback marker, not a broad HUD: `GOTSHOTGUN`,
+  `sfx_wpnup` as a deferred sound-channel/event counter, bonus count, selected
+  shell ammo/weapon-owned/pending-weapon fields, and final item-present state.
+- Keeps the smoke path deterministic.
+- Do not generalize pickup traversal, statusbar inventory, all item classes,
+  dropped clip/chaingun branches, respawn queues, deathmatch weapon staying,
+  broad thing removal, or audio playback.
+
+Validation status:
+
+- Synthetic tests cover selected touch z/reach ordering, live-toucher guard,
+  `SPR_SHOT` dispatch, `MF_DROPPED` weapon pickup semantics, one-clip dropped
+  shotgun ammo behavior, selected `P_GiveWeapon` return cases, selected
+  `GOTSHOTGUN`/`sfx_wpnup` boundary, selected item removal, no respawn queue,
+  no full-frame byte arrays, and absence of broad item classes.
+- Synthetic renderer ordering tests prove the frame after pickup no longer
+  draws the selected drop posts while preserving wall/flat,
+  impact/pain, death, and psprite paths.
+- Pinned replay/smoke proves the selected dropped shotgun can be touched,
+  produces at least one measurable player-feedback signal, changes a runtime
+  framebuffer or selected drop-present signature because the drop draw path is
+  removed after pickup, preserves stage35 through stage19 signatures, and
+  contains no `source_stage37` strings.
+- Stage36 reports `S36SIG=397846180`.
+- Stage36 final framebuffer signatures are `2997224612`, `1668066382`, and
+  `1194192847`; the selected drop intermediate signatures are `2926869513`,
+  `3057214504`, and `2513680424`.
+- The final pickup frame reports `DROP36=REMOVED`, `DRC36=0`, `DRP36=0`,
+  `PICK36=1`, `ITEM36=0`, `SHELL36=4`, `WOWN36=1`, `PEND36=2`,
+  `MSG36=GOTSHOTGUN`, `SFX36=sfx_wpnup`, `SFXC36=1`, `BONUS36=6`, and
+  `RQ36=0`.
+- Stage35 through stage19 baselines are preserved, including
+  `S35SIG=3270148876`, `S34SIG=4027590938`, `S33SIG=1614948054`,
+  `S32SIG=533488475`, `S31SIG=3593583171`, `S30SIG=3898523864`,
+  `S29SIG=3738922932`, `S28SIG=2805406010`, `S27SIG=1735738182`,
+  `S26SIG=132405987`, `S25SIG=1688844032`, `S24SIG=1919312263`,
+  `S23SIG=3216085132`, `S22SIG=2207028069`, `S21SIG=1770773845`,
+  `S20SIG=3226031347`, and `S19SIG=2088411722`.
+
+## Releasable Slice After That: source_stage37_selected_monster_attack_feedback_probe
+
+Output:
+
+```text
+build/source_stage37_selected_monster_attack_feedback_probe.exe
+```
+
+Goal:
+
+After stage36 closes the selected dropped-weapon feedback loop, return to the
+selected living-monster route and cross one enemy attack feedback boundary. The
+preferred target is the already-studied stage29 shotgun-guy attack-decision
+route, advanced only far enough for one source-shaped enemy hitscan/pain result
+against the player, with a bounded health/pain/message/sound or visual report.
+This is not a generalized monster AI, chase, projectile, infighting, or player
+death system.
+
+Likely shape:
+
+- Preserve the released renderer and selected combat visual bridges as
+  baselines, but choose a clean selected enemy-attack replay rather than
+  entangling it with the killed-and-dropped stage35/36 corpse route.
+- Reuse stage29's selected shotgun-guy context up to the first honest
+  attack-decision boundary, then source-read the narrow `A_SPosAttack` /
+  `P_LineAttack` / `P_DamageMobj(player)` path needed for one deterministic
+  enemy shotgun attack.
+- Report or draw only the selected player feedback: health/armor delta,
+  damage count, pain-state or palette/flash marker if cheap, selected sound
+  boundary if reached, and deterministic framebuffer/state signatures.
+- Keep player death, enemy kill/drop, generalized combat loops, projectiles,
+  explosions, broad monster AI, infighting, generalized sprite traversal,
+  statusbar rebuilds, and real audio playback deferred.
+
+Validation shape:
+
+- Synthetic tests for selected enemy attack state/action ordering, line attack
+  target selection, player damage mutation, feedback marker/reporting, absence
+  of generalized AI/projectiles/death/drop, preservation signatures, and no
+  `source_stage38` strings.
+- Pinned smoke proving one selected enemy attack produces a measurable player
+  feedback signal while the existing stage36 and stage35 baselines remain
+  inspectable.
 
 ## Future Backlog
 
-Likely later slices after stage26, intentionally kept as headlines:
+Likely later slices after stage37, intentionally kept mostly as headlines:
 
-- `source_stage27_integrated_scripted_room_interaction_loop`
-- `source_stage28_live_input_to_deterministic_game_loop_bridge`
-- `source_stage29_monster_chase_attack_and_death_drop_loop`
-- `source_stage30_projectiles_explosions_and_broader_weapon_families`
-- `source_stage31_menu_automap_intermission_and_hud_refinement`
-- `source_stage32_save_load_demo_determinism_and_longer_playthrough_smoke`
-- `source_stage33_map_progression_and_broader_wad_compatibility`
-- `source_stage34_real_audio_device_output_and_mixer_integration`
-- `source_stage35_playable_shareware-style_vertical_slice`
+- `source_stage38_selected_projectile_or_barrel_visual_probe`: one selected
+  projectile/barrel route, not a full projectile system.
+- `source_stage39_generalized_sprite_traversal_and_sorting_bridge`: replace
+  selected world-post tables with a bounded source-shaped sprite traversal
+  bridge.
+- `source_stage40_statusbar_weapon_ammo_feedback_bridge`
+- `source_stage41_unified_live_tick_render_loop_probe`
+- `source_stage42_map_progression_and_demo_determinism_probe`
+- `source_stage43_menu_automap_save_load_shells`
+- `source_stage44_real_audio_device_output_and_mixer_integration`
+- `source_stage45_playable_shareware_style_vertical_slice`
 
-At that point the fixed render harness can start becoming the game, not just a
-source-shaped renderer proof.
+At that point the fixed render harness can start becoming a small playable
+demo, not just a chain of source-shaped renderer/gameplay proofs.

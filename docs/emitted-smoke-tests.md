@@ -1524,3 +1524,870 @@ restarts upward, returns `-64 -> -8`, clears activeplats and sector
 `specialdata`, fires the deferred pstart/pstop boundaries, and lazily unlinks.
 Real speaker playback, generalized platforms/lifts, generalized floors,
 ceilings/crushers, stairs, donuts, and map progression remain deferred.
+
+## Source Stage 26 First Ceiling Or Crusher Special Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage26_first_ceiling_or_crusher_special_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage26_first_ceiling_or_crusher_special_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage26_first_ceiling_or_crusher_special_probe.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19LINE=332*S19SIG=2088411722*"
+$ExpectedStage20 = "*S20CALL=1*S20SIG=3226031347*"
+$ExpectedStage21 = "*S21SEC=56*S21SIG=1770773845*"
+$ExpectedStage22 = "*S22LINE=839*S22SIG=2207028069*"
+$ExpectedStage23 = "*S23LINE=3452*S23SIG=3216085132*"
+$ExpectedStage24 = "*S24LINE=391*S24SIG=1919312263*"
+$ExpectedStage25 = "*S25LINE=2304*S25SIG=1688844032*"
+$ExpectedStage26 = "*S26LINE=71 S26SPEC=49 TAG26=40 SIDE26=0 RSID26=125 LSID26=-1 FSEC26=75 SLOT26=1 TEX260=SW1GSTON TEX261=SW2GSTON TEX262=SW2GSTON PAIR26=22 SWI26=44 SPC261=0 EVC26=1 TFIND26=2 TITER26=131 TSEC26=117 F26=192 C260=304 C261=304 SSPEC26=0 BOT26=200 TOP26=304 DIR260=-1 DIR261=-1 CRUSH26=1 SPD26=1 ASLOT26=0 ADD26=1 PTIC26=210 TMC26=210 MP26=210 CMUT26=208 PAST26=2 BREV26=1 TREV26=1 AREM26=0 ACLR26=0 LREM26=0 MSND26=27 PSTOP26=0 LT26=210 ORDER26=1 AUD26=0 GENF26=1 GPLAT26=1 GCEIL26=1 S27ABS=1 S26SIG=132405987*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20 -and
+          $Process.MainWindowTitle -like $ExpectedStage21 -and
+          $Process.MainWindowTitle -like $ExpectedStage22 -and
+          $Process.MainWindowTitle -like $ExpectedStage23 -and
+          $Process.MainWindowTitle -like $ExpectedStage24 -and
+          $Process.MainWindowTitle -like $ExpectedStage25 -and
+          $Process.MainWindowTitle -like $ExpectedStage26) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage26_first_ceiling_or_crusher_special_probe.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage21 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage22 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage23 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage24 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage25 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage26) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage26_first_ceiling_or_crusher_special_probe.exe did not report the expected ceiling/crusher proof"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage26_first_ceiling_or_crusher_special_probe.exe did not close cleanly"
+}
+```
+
+Stage26 preserves the stage25 platform/lift proof, then activates real MAP29
+linedef `71` through the selected source-shaped one-shot ceiling switch route.
+It mutates front middle texture `SW1GSTON -> SW2GSTON`, clears line special
+`49`, resolves tag `40` to sector `117`, allocates activeceilings slot `0`, and
+runs 210 bounded ticker/update-special tics until the ceiling moves
+`304 -> 200 -> 304`, reverses at both strict past-destination boundaries, and
+remains active/cycling. Real speaker playback, generalized ceilings/crushers,
+generalized floors/platforms, stairs, donuts, and map progression remain
+deferred.
+
+## Source Stage 27 Integrated Scripted Room Interaction Loop
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage27_integrated_scripted_room_interaction_loop.py
+```
+
+Expected output:
+
+```text
+build/source_stage27_integrated_scripted_room_interaction_loop.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage27_integrated_scripted_room_interaction_loop.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStage19 = "*S19SIG=2088411722*"
+$ExpectedStage20 = "*S20SIG=3226031347*"
+$ExpectedStage21 = "*S21SIG=1770773845*"
+$ExpectedStage22 = "*S22SIG=2207028069*"
+$ExpectedStage23 = "*S23SIG=3216085132*"
+$ExpectedStage24 = "*S24SIG=1919312263*"
+$ExpectedStage25 = "*S25SIG=1688844032*"
+$ExpectedStage26 = "*S26SIG=132405987*"
+$ExpectedStart = "*S27 LIVE START*STEP27=0*"
+$ExpectedFinal = "*S27 LIVE STEP27=6*TIC27=136*F27=-8*TEX27=SW1STRTN*S27SIG=1735738182*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage27_integrated_scripted_room_interaction_loop.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage27_integrated_scripted_room_interaction_loop.exe did not report the start of the post-launch loop"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStage19 -and
+          $Process.MainWindowTitle -like $ExpectedStage20 -and
+          $Process.MainWindowTitle -like $ExpectedStage21 -and
+          $Process.MainWindowTitle -like $ExpectedStage22 -and
+          $Process.MainWindowTitle -like $ExpectedStage23 -and
+          $Process.MainWindowTitle -like $ExpectedStage24 -and
+          $Process.MainWindowTitle -like $ExpectedStage25 -and
+          $Process.MainWindowTitle -like $ExpectedStage26 -and
+          $Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedStage19 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage20 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage21 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage22 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage23 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage24 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage25 -or
+    $Process.MainWindowTitle -notlike $ExpectedStage26 -or
+    $Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage27_integrated_scripted_room_interaction_loop.exe did not advance to the expected final scripted room loop title"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage27_integrated_scripted_room_interaction_loop.exe did not close cleanly"
+}
+```
+
+Stage27 preserves the stage26 ceiling/crusher proof, then owns one bounded
+MAP12 runtime world using the stage25 reusable platform-button route. A
+deterministic `ticcmd_t` script issues one use command, then the normal ticker
+loop samples the same world at six tics while the switch changes, the button
+restores, the platform waits, restarts, and clears active state. After the
+window is created, a timer updates the title through the six samples so the
+proof visibly advances after launch. Manual input, speaker playback, map
+progression, generalized combat, and broader special systems remain deferred.
+
+## Source Stage 28 Live Input To Deterministic Game Loop Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage28_live_input_to_deterministic_game_loop_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage28_live_input_to_deterministic_game_loop_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage28_live_input_to_deterministic_game_loop_bridge.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(5)
+$ExpectedStart = "*S28 REPLAY START*STEP28=0*LIVE28=0*"
+$ExpectedFinal = "*S28 REPLAY STEP28=6*LIVE28=0*TIC28=136*F28=-8*TEX28=SW1STRTN*S27SIG=1735738182*R28SIG=1735738182*S28SIG=2805406010*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage28_live_input_to_deterministic_game_loop_bridge.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage28_live_input_to_deterministic_game_loop_bridge.exe did not report the replay start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage28_live_input_to_deterministic_game_loop_bridge.exe did not advance to the expected final replay bridge title"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage28_live_input_to_deterministic_game_loop_bridge.exe did not close cleanly"
+}
+```
+
+Manual smoke note:
+
+```powershell
+.\build\source_stage28_live_input_to_deterministic_game_loop_bridge.exe -manual
+```
+
+Manual mode reports `LIVE28=1` in the title and updates bounded live command
+fields for W/S/up/down forward/back, A/D/left/right turn, and E/Space use.
+Replay mode remains deterministic and does not depend on live input.
+
+## Source Stage 29 Selected Monster Chase Attack State Loop
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage29_selected_monster_chase_attack_state_loop.py
+```
+
+Expected output:
+
+```text
+build/source_stage29_selected_monster_chase_attack_state_loop.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage29_selected_monster_chase_attack_state_loop.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(8)
+$ExpectedStart = "*S29 REPLAY START*STEP29=0*LIVE29=0*"
+$ExpectedFinal = "*S29 REPLAY STEP29=6*LIVE29=0*TIC29=6*ST29=S_SPOS_RUN1*AB29=1*BOUND29=ATTACK_DECISION*LOG29=1:S_SPOS_PAIN>6:S_SPOS_RUN1*S30ABS=1*S19SIG=2088411722*S28SIG=2805406010*S29SIG=3738922932*"
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage29_selected_monster_chase_attack_state_loop.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage29_selected_monster_chase_attack_state_loop.exe did not report the replay start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage29_selected_monster_chase_attack_state_loop.exe did not advance to the expected final monster-loop title"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage29_selected_monster_chase_attack_state_loop.exe did not close cleanly"
+}
+```
+
+Stage29 starts from the selected MAP01 shotgun-guy state proven by stages16-18,
+then replays six source-ordered tics through `G_Ticker`,
+`P_PlayerThink`/`P_MovePsprites`, `P_Ticker`, `P_RunThinkers`, and
+`P_MobjThinker`. The final boundary is the selected `A_Chase` attack decision;
+attack execution, projectiles, second damage, death/drop, broad AI, runtime
+rendered motion, map progression, UI systems, and real audio remain deferred.
+
+## Source Stage 30 Runtime Rendered Motion Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage30_runtime_rendered_motion_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage30_runtime_rendered_motion_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage30_runtime_rendered_motion_bridge.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(8)
+$ExpectedStart = "*S30 RENDER START*STEP30=0*"
+$ExpectedFinal = "*STEP30=3*TIC30=7*VX30=-172*VY30=-194*A30=3*FB30=169445058*FBDIST30=3*S19SIG=2088411722*S29SIG=3738922932*S30SIG=3898523864*S31ABS=1*"
+$SeenTitles = New-Object System.Collections.Generic.List[string]
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage30_runtime_rendered_motion_bridge.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage30_runtime_rendered_motion_bridge.exe did not report the render start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage30_runtime_rendered_motion_bridge.exe did not advance to the expected final render title"
+}
+
+$FbValues = @{}
+foreach ($Title in $SeenTitles) {
+    foreach ($Match in [regex]::Matches($Title, "FB30=(\d+)")) {
+        $FbValues[$Match.Groups[1].Value] = $true
+    }
+}
+
+if ($FbValues.Count -lt 2) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage30_runtime_rendered_motion_bridge.exe did not report distinct post-launch framebuffer signatures"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage30_runtime_rendered_motion_bridge.exe did not close cleanly"
+}
+```
+
+Stage30 reuses the selected stage14 MAP01 player movement route, samples tics
+`0`, `4`, and `7`, and copies rendered frame bytes into the live framebuffer on
+timer ticks. The smoke must see distinct `FB30=` values after launch; changing
+title/status text alone is not sufficient. Projectiles, explosions, generalized
+combat, broad AI, generalized specials, map progression, UI systems, real audio
+playback, and stage31 remain deferred.
+
+## Source Stage 31 Runtime Real Renderer Motion Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage31_runtime_real_renderer_motion_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage31_runtime_real_renderer_motion_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage31_runtime_real_renderer_motion_bridge.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(8)
+$ExpectedStart = "*S31 REALRENDER START*STEP31=0*"
+$ExpectedFinal = "*STEP31=3*TIC31=7*VX31=-172*VY31=-194*A31=3*FB31=1677820087*FBDIST31=3*NOFULL31=1*S19SIG=2088411722*S30SIG=3898523864*S31SIG=3593583171*S32ABS=1*"
+$SeenTitles = New-Object System.Collections.Generic.List[string]
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage31_runtime_real_renderer_motion_bridge.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage31_runtime_real_renderer_motion_bridge.exe did not report the real-renderer start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage31_runtime_real_renderer_motion_bridge.exe did not advance to the expected final real-renderer title"
+}
+
+$FbValues = @{}
+foreach ($Title in $SeenTitles) {
+    foreach ($Match in [regex]::Matches($Title, "FB31=(\d+)")) {
+        $FbValues[$Match.Groups[1].Value] = $true
+    }
+}
+
+if ($FbValues.Count -lt 2) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage31_runtime_real_renderer_motion_bridge.exe did not report distinct post-launch real-renderer framebuffer signatures"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage31_runtime_real_renderer_motion_bridge.exe did not close cleanly"
+}
+```
+
+Stage31 reuses the selected stage14 MAP01 player movement route, samples tics
+`0`, `4`, and `7`, and redraws the live framebuffer from runtime-selected wall
+column and flat span command tables. The smoke must see distinct `FB31=` values
+after launch; stage31 motion is produced by executing the emitted
+`R_DrawColumn`/`R_DrawSpan`-shaped primitives, not by copying full pre-rendered
+stage31 framebuffer byte arrays. Sky, masked midtextures, sprite posts, combat
+visual state, projectiles, explosions, generalized combat, broad AI,
+generalized specials, map progression, UI systems, and real audio playback
+remain deferred.
+
+## Source Stage 32 Selected Combat Visual State Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage32_selected_combat_visual_state_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage32_selected_combat_visual_state_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage32_selected_combat_visual_state_bridge.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(8)
+$ExpectedStart = "*S32 PSVIS START*STEP32=0*"
+$ExpectedFinal = "*STEP32=3*TIC32=7*PS32=S_SGUN4*PATCH32=SHTGC0*PC32=135*PP32=7493*FB32=2243530028*FBDIST32=3*PSDIST32=3*NOFULL32=1*S19SIG=2088411722*S31SIG=3593583171*S32SIG=533488475*S33ABS=1*"
+$SeenTitles = New-Object System.Collections.Generic.List[string]
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage32_selected_combat_visual_state_bridge.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage32_selected_combat_visual_state_bridge.exe did not report the psprite visual start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage32_selected_combat_visual_state_bridge.exe did not advance to the expected final psprite visual title"
+}
+
+$FbValues = @{}
+foreach ($Title in $SeenTitles) {
+    foreach ($Match in [regex]::Matches($Title, "(^| )FB32=(\d+)")) {
+        $FbValues[$Match.Groups[2].Value] = $true
+    }
+}
+
+if ($FbValues.Count -lt 2) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage32_selected_combat_visual_state_bridge.exe did not report distinct post-launch psprite framebuffer signatures"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage32_selected_combat_visual_state_bridge.exe did not close cleanly"
+}
+```
+
+Stage32 preserves the stage31 selected MAP01 wall/flat runtime redraw path and
+then draws one selected shotgun psprite route after walls/flats. The smoke must
+see distinct `FB32=` values after launch; the changed pixels come from
+runtime-executed `R_DrawColumn`-shaped psprite post commands for real WAD patch
+data, not from full pre-rendered framebuffer byte arrays. Projectiles,
+explosions, monster attack execution, damage/death/drop, generalized combat,
+broad AI, generalized sprite systems, map progression, UI systems, and real
+audio playback remain deferred.
+
+## Source Stage 33 Selected Hitscan Impact Visual Boundary
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage33_selected_hitscan_impact_visual_boundary.py
+```
+
+Expected output:
+
+```text
+build/source_stage33_selected_hitscan_impact_visual_boundary.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage33_selected_hitscan_impact_visual_boundary.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(8)
+$ExpectedStart = "*S33 IMPACT START*STEP33=0*"
+$ExpectedFinal = "*STEP33=3*TIC33=7*PS33=S_SGUN4*PATCH33=SHTGC0*IMP33=S_SPOS_PAIN2*IPATCH33=SPOSG1*IC33=61*IP33=981*FB33=1535635467*FBDIST33=3*IMPDIST33=3*NOFULL33=1*S19SIG=2088411722*S32SIG=533488475*S33SIG=1614948054*S34ABS=1*"
+$SeenTitles = New-Object System.Collections.Generic.List[string]
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage33_selected_hitscan_impact_visual_boundary.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage33_selected_hitscan_impact_visual_boundary.exe did not report the impact visual start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage33_selected_hitscan_impact_visual_boundary.exe did not advance to the expected final impact visual title"
+}
+
+$FbValues = @{}
+foreach ($Title in $SeenTitles) {
+    foreach ($Match in [regex]::Matches($Title, "(^| )FB33=(\d+)")) {
+        $FbValues[$Match.Groups[2].Value] = $true
+    }
+}
+
+if ($FbValues.Count -lt 2) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage33_selected_hitscan_impact_visual_boundary.exe did not report distinct post-launch impact framebuffer signatures"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage33_selected_hitscan_impact_visual_boundary.exe did not close cleanly"
+}
+```
+
+Stage33 preserves the stage31 selected MAP01 wall/flat runtime redraw path and
+the stage32 selected shotgun psprite route, then draws one bounded selected
+shotgun-guy pain-state world sprite route between them. The smoke must see
+distinct `FB33=` values after launch; the changed pixels come from
+runtime-executed `R_DrawColumn`-shaped world pain and psprite post commands for
+real WAD patch data, not from full pre-rendered framebuffer byte arrays. Blood
+or puff spawning, projectiles, explosions, monster attack execution, monster
+death/drop, generalized combat, broad AI, generalized sprite systems, map
+progression, UI systems, stage34, and real audio playback remain deferred.
+
+## Source Stage34 Selected Hitscan Death Visual Boundary
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage34_selected_hitscan_death_visual_boundary.py
+```
+
+Expected output:
+
+```text
+build/source_stage34_selected_hitscan_death_visual_boundary.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage34_selected_hitscan_death_visual_boundary.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(8)
+$ExpectedStart = "*S34 DEATH START*STEP34=0*"
+$ExpectedFinal = "*STEP34=3*TIC34=7*PS34=S_SGUN4*PATCH34=SHTGC0*IMP34=S_SPOS_PAIN2*IPATCH34=SPOSG1*DIE34=S_SPOS_DIE2*DPATCH34=SPOSI0*DC34=91*DP34=1013*FB34=1194192847*FBDIST34=3*DEATHDIST34=3*NOFULL34=1*S19SIG=2088411722*S32SIG=533488475*S33SIG=1614948054*S34SIG=4027590938*S35ABS=1*"
+$SeenTitles = New-Object System.Collections.Generic.List[string]
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage34_selected_hitscan_death_visual_boundary.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage34_selected_hitscan_death_visual_boundary.exe did not report the death visual start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage34_selected_hitscan_death_visual_boundary.exe did not advance to the expected final death visual title"
+}
+
+$FbValues = @{}
+foreach ($Title in $SeenTitles) {
+    foreach ($Match in [regex]::Matches($Title, "(^| )FB34=(\d+)")) {
+        $FbValues[$Match.Groups[2].Value] = $true
+    }
+}
+
+if ($FbValues.Count -lt 2) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage34_selected_hitscan_death_visual_boundary.exe did not report distinct post-launch death framebuffer signatures"
+}
+
+$Bytes = [System.IO.File]::ReadAllBytes($Exe)
+$Ascii = [System.Text.Encoding]::ASCII.GetString($Bytes).ToLowerInvariant()
+if ($Ascii.Contains("source_stage35")) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage34_selected_hitscan_death_visual_boundary.exe contains a source_stage35 marker"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage34_selected_hitscan_death_visual_boundary.exe did not close cleanly"
+}
+```
+
+Stage34 preserves the stage31 selected MAP01 wall/flat runtime redraw path, the
+stage33 selected impact/pain world-post route, and the stage32 selected shotgun
+psprite route, then draws one bounded selected shotgun-guy death-state route
+between impact/pain and psprite posts. The smoke must see distinct `FB34=`
+values after launch; the changed pixels come from runtime-executed
+`R_DrawColumn`-shaped death and psprite post commands for real WAD patch data,
+not from full pre-rendered framebuffer byte arrays. Item pickup, generalized
+death/drop, projectiles, explosions, broad monster AI, generalized combat,
+generalized sprite systems, map progression, UI systems, stage35 executable
+work, and real audio playback remain deferred.
+
+## Source Stage35 Selected Dropped Shotgun Visual Boundary
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage35_selected_dropped_shotgun_visual_boundary.py
+```
+
+Expected output:
+
+```text
+build/source_stage35_selected_dropped_shotgun_visual_boundary.exe
+```
+
+Scripted smoke test:
+
+```powershell
+$Exe = (Resolve-Path .\build\source_stage35_selected_dropped_shotgun_visual_boundary.exe).Path
+$Process = Start-Process -FilePath $Exe -WorkingDirectory (Get-Location).Path -PassThru
+$Deadline = (Get-Date).AddSeconds(8)
+$ExpectedStart = "*S35 DROP START*STEP35=0*"
+$ExpectedFinal = "*STEP35=3*TIC35=7*DROP35=S_SHOT*DRPATCH35=SHOTA0*DRC35=44*DRP35=284*DROPFB35=3299982258*FB35=4078405109*FBDIST35=3*DROPDIST35=2*DROPSPAWN35=1*DROPMF35=1*NOFULL35=1*S19SIG=2088411722*S34SIG=4027590938*S35SIG=3270148876*S36ABS=1*"
+$SeenTitles = New-Object System.Collections.Generic.List[string]
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedStart) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.HasExited) {
+    throw "source_stage35_selected_dropped_shotgun_visual_boundary.exe exited before the window appeared"
+}
+
+if ($Process.MainWindowTitle -notlike $ExpectedStart) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage35_selected_dropped_shotgun_visual_boundary.exe did not report the drop visual start marker"
+}
+
+do {
+    Start-Sleep -Milliseconds 100
+    $Process.Refresh()
+    if ($Process.MainWindowTitle -and -not $SeenTitles.Contains($Process.MainWindowTitle)) {
+        $SeenTitles.Add($Process.MainWindowTitle)
+    }
+} until (($Process.MainWindowTitle -like $ExpectedFinal) -or
+         $Process.HasExited -or
+         (Get-Date) -gt $Deadline)
+
+if ($Process.MainWindowTitle -notlike $ExpectedFinal) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage35_selected_dropped_shotgun_visual_boundary.exe did not advance to the expected final drop visual title"
+}
+
+$FbValues = @{}
+foreach ($Title in $SeenTitles) {
+    foreach ($Match in [regex]::Matches($Title, "(^| )FB35=(\d+)")) {
+        $FbValues[$Match.Groups[2].Value] = $true
+    }
+}
+
+if ($FbValues.Count -lt 2) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage35_selected_dropped_shotgun_visual_boundary.exe did not report distinct post-launch drop framebuffer signatures"
+}
+
+$Bytes = [System.IO.File]::ReadAllBytes($Exe)
+$Ascii = [System.Text.Encoding]::ASCII.GetString($Bytes).ToLowerInvariant()
+if ($Ascii.Contains("source_stage36")) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage35_selected_dropped_shotgun_visual_boundary.exe contains a source_stage36 marker"
+}
+
+$null = $Process.CloseMainWindow()
+if (-not $Process.WaitForExit(3000)) {
+    Stop-Process -Id $Process.Id -Force
+    throw "source_stage35_selected_dropped_shotgun_visual_boundary.exe did not close cleanly"
+}
+```
+
+Stage35 preserves the stage31 selected MAP01 wall/flat runtime redraw path, the
+stage33 selected impact/pain world-post route, the stage34 selected death route,
+and the stage32 selected shotgun psprite route. It materializes the selected
+`P_KillMobj` `MT_SHOTGUY -> MT_SHOTGUN` drop through a bounded
+`P_SpawnMobj`-shaped record, marks `MF_DROPPED`, and draws real WAD `SHOTA0`
+posts after death and before psprites. The smoke must see distinct `FB35=`
+values after launch; the new drop contribution changes `DIEFB35=2513680424` to
+`DROPFB35=3299982258` before the final psprite pass. Pickup,
+`P_TouchSpecialThing`, `P_GiveWeapon`, ammo/weapon grant, pickup message, item
+removal, respawn queue, broad inventory/statusbar systems, generalized item
+traversal, generalized death/drop, projectiles, explosions, broad monster AI,
+generalized combat, map progression, UI systems, stage36 executable work, and
+real audio playback remain deferred.
+
+## Source Stage36 Selected Dropped Shotgun Pickup Feedback Boundary
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage36_selected_dropped_shotgun_pickup_feedback_boundary.py
+```
+
+Expected output:
+
+```text
+build/source_stage36_selected_dropped_shotgun_pickup_feedback_boundary.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage36_selected_dropped_shotgun_pickup_feedback_boundary.SourceStage36SelectedDroppedShotgunPickupFeedbackBoundaryTests.test_smoke_launch_reports_stage36_pickup_feedback_and_distinct_signatures
+```
+
+Stage36 preserves the stage31 wall/flat runtime redraw path, stage33
+impact/pain posts, stage34 death posts, stage35 dropped-shotgun posts before
+pickup, and stage32 psprite posts. The selected `SPR_SHOT` dropped item is
+touched through the bounded `P_TouchSpecialThing` gate, gives one shell clip
+and the shotgun through `P_GiveWeapon(... dropped=true)`, reports `GOTSHOTGUN`,
+`sfx_wpnup`, `bonuscount`, shell ammo, owned/pending weapon state, removes only
+the selected item, and shows `DROP36=REMOVED` / `DRC36=0` in the final frame.
+The smoke must see distinct `FB36=` values, `S36SIG=397846180`,
+`S35SIG=3270148876`, and no `source_stage37` strings in the executable.
