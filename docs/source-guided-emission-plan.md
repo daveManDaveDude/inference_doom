@@ -55,7 +55,7 @@ smaller or differently ordered step would be more honest.
 5. Keep the released debug stages as proofs, but do not build the next phase by
    piling more special cases into them.
 
-## Current Baseline: source_stage36_selected_dropped_shotgun_pickup_feedback_boundary
+## Current Baseline: source_stage41_statusbar_weapon_ammo_feedback_bridge
 
 The source-guided line now covers WAD/map setup, BSP setup structures,
 source-ordered BSP traversal, Doom-shaped bbox/frustum visibility, and live
@@ -240,8 +240,37 @@ the selected dropped shotgun is touched through the bounded
 `P_TouchSpecialThing -> P_GiveWeapon(player, wp_shotgun, dropped=true)` route.
 The released pickup proof grants one shell clip and shotgun ownership, sets the
 pending weapon, reports `GOTSHOTGUN`, `sfx_wpnup`, and `bonuscount`, removes
-only the selected dropped item, and omits its posts from the final frame. It
-still stops before generalized continuous camera rendering,
+only the selected dropped item, and omits its posts from the final frame.
+Stage37 then returns to the selected living stage29 shotgun-guy route and
+crosses one bounded enemy attack feedback boundary:
+`A_SPosAttack -> S_StartSound(sfx_shotgn) -> A_FaceTarget ->
+P_AimLineAttack -> 3x P_LineAttack -> player P_DamageMobj`. The released
+attack proof applies one selected pellet to player 0, reports deterministic
+spread/damage values, mutates player health `100 -> 91`, raises
+`damagecount=9`, records attacker/source feedback, and keeps player death
+absent. Stage38 then restores stable timer-driven presentation for that
+feedback marker through `InvalidateRect -> UpdateWindow -> WM_PAINT`, and
+stage39 crosses exactly one selected imp fireball boundary:
+`A_TroopAttack -> A_FaceTarget -> P_SpawnMissile(MT_TROOPSHOT) ->
+P_CheckMissileSpawn`, records one bounded `S_TBALL1` / `SPR_BAL1` projectile
+state, one deferred `sfx_firsht`, one selected first `P_TryMove` success, and
+draws a compact runtime projectile marker through the preserved present path.
+Stage40 then starts retiring renderer special cases by replacing that compact
+stage39 projectile marker in the stage40 visual path with a bounded selected
+world-vissprite bridge:
+`R_AddSprites -> R_ProjectSprite -> R_SortVisSprites -> R_DrawMasked`. It uses
+real BAL1 frame A WAD patch post data for the selected `MT_TROOPSHOT`, draws
+those posts before the selected shotgun psprite path, preserves the stage39
+projectile state/present evidence, and still avoids broad all-map thing or
+sprite traversal. Stage41 adds the first compact player-facing feedback
+surface after that preserved world-vissprite/psprite path. It draws a bounded
+runtime status strip from source-owned player/status/message state: health,
+armor, shell ammo, shotgun ownership, pending weapon, `GOTSHOTGUN`,
+`bonuscount`, `damagecount`, pickup/damage flash markers, and deferred
+`sfx_wpnup`, `sfx_shotgn`, and `sfx_firsht` markers. It is intentionally not a
+classic full statusbar or HUD rebuild; it gives later live-loop slices a stable
+place to expose player-facing state while broad UI remains deferred.
+It still stops before generalized continuous camera rendering,
 generalized combat, generalized monster AI/chase, generalized sprite traversal,
 generalized death/drop/item systems, generalized specials, generalized
 doors/switches, generalized floor/plat/ceiling families beyond the selected
@@ -4370,7 +4399,40 @@ Validation status:
   `S23SIG=3216085132`, `S22SIG=2207028069`, `S21SIG=1770773845`,
   `S20SIG=3226031347`, and `S19SIG=2088411722`.
 
-## Releasable Slice After That: source_stage37_selected_monster_attack_feedback_probe
+## Planning Checkpoint After Stage36
+
+Where we are:
+
+- Stage31 through stage36 now prove a compact but real source-guided pipeline:
+  runtime wall/flat redraw, selected shotgun psprite posts, selected pain/death
+  world posts, selected dropped-shotgun posts, and selected dropped-weapon
+  pickup feedback. The executable path is still emitted directly as PE32 x86
+  bytes by Python; no compiler, assembler, linker, or compiled-code blob enters
+  the release path.
+- Stage36 closed the selected `MT_SHOTGUY -> MT_SHOTGUN -> SPR_SHOT` loop far
+  enough to mutate player-facing pickup state: one shell clip, shotgun
+  ownership, pending weapon, `GOTSHOTGUN`, deferred `sfx_wpnup`, `bonuscount`,
+  and selected item removal. It intentionally did not create a generalized item
+  walker, broad inventory/statusbar system, respawn queue, or audio backend.
+- The current renderer still depends on selected world-post command tables for
+  impact/death/drop sprites. That is acceptable for the next slice because the
+  next learning target is one enemy attack feedback boundary, not generalized
+  sprite traversal.
+
+Next bottleneck:
+
+- Return to a living selected monster route rather than extending the killed
+  stage35/36 corpse route. Stage29 already reaches the honest
+  `A_Chase` attack-decision boundary for the selected MAP01 shotgun guy. The
+  smallest useful next proof is to advance that living route into exactly one
+  selected `A_SPosAttack` feedback event against the player.
+- The source routines to read first for stage37 are `p_enemy.c` `A_SPosAttack`
+  / `A_FaceTarget`, `p_map.c` `P_AimLineAttack` and `P_LineAttack`, and the
+  player branch of `p_inter.c` `P_DamageMobj`. Keep any random spread/damage
+  sequence deterministic and reported, and stop before player death,
+  generalized monster AI, projectiles, infighting, or statusbar rebuilds.
+
+## Released Slice: source_stage37_selected_monster_attack_feedback_probe
 
 Output:
 
@@ -4378,57 +4440,431 @@ Output:
 build/source_stage37_selected_monster_attack_feedback_probe.exe
 ```
 
-Goal:
+Released goal:
 
 After stage36 closes the selected dropped-weapon feedback loop, return to the
 selected living-monster route and cross one enemy attack feedback boundary. The
-preferred target is the already-studied stage29 shotgun-guy attack-decision
-route, advanced only far enough for one source-shaped enemy hitscan/pain result
-against the player, with a bounded health/pain/message/sound or visual report.
-This is not a generalized monster AI, chase, projectile, infighting, or player
-death system.
+target route is the stage29 selected shotgun guy advanced from the
+`A_Chase` attack-decision boundary into one bounded `A_SPosAttack` action
+against the player, with deterministic player damage feedback and a clear
+state or render signature. This is not generalized monster AI, projectile
+logic, infighting, player death, or a statusbar rebuild.
 
-Likely shape:
+Released shape:
 
 - Preserve the released renderer and selected combat visual bridges as
   baselines, but choose a clean selected enemy-attack replay rather than
   entangling it with the killed-and-dropped stage35/36 corpse route.
-- Reuse stage29's selected shotgun-guy context up to the first honest
-  attack-decision boundary, then source-read the narrow `A_SPosAttack` /
-  `P_LineAttack` / `P_DamageMobj(player)` path needed for one deterministic
-  enemy shotgun attack.
-- Report or draw only the selected player feedback: health/armor delta,
-  damage count, pain-state or palette/flash marker if cheap, selected sound
-  boundary if reached, and deterministic framebuffer/state signatures.
+- Reuse stage29's selected MAP01 shotgun-guy context up to the first honest
+  attack-decision boundary: living `MT_SHOTGUY`, target `0`, health `20`,
+  threshold retained, and attack execution deferred until this slice.
+- Advance only the narrow source route:
+  `A_SPosAttack -> S_StartSound(sfx_shotgn boundary) -> A_FaceTarget ->
+  P_AimLineAttack -> three bounded P_LineAttack pellets -> player branch of
+  P_DamageMobj`.
+- Freeze and report the selected random values used for spread and damage:
+  `(26,36,17,9,hit)`, `(46,52,231,6,miss)`, and
+  `(232,76,31,6,miss)`.
+- Report only compact player feedback: health `100 -> 91`, armor `0 -> 0`,
+  `damagecount=9`, attacker/source marker `MT_SHOTGUY->P0`, selected
+  thrust/pain markers, and one deferred `sfx_shotgn` event.
+- For visual/state proof, add a small runtime feedback marker and title/state
+  signatures after the preserved psprite path rather than inventing a HUD.
+  The stage37 reported framebuffer signatures are `2997224612`, `1850654463`,
+  and `4146202648`, with the latter two including attack feedback
+  contribution. `STATE37=1816157848` and `S37SIG=2681905384`.
 - Keep player death, enemy kill/drop, generalized combat loops, projectiles,
   explosions, broad monster AI, infighting, generalized sprite traversal,
-  statusbar rebuilds, and real audio playback deferred.
+  statusbar rebuilds, map progression, UI systems, and real audio playback
+  deferred.
+
+Validation status:
+
+- Synthetic tests cover selected enemy attack state/action ordering,
+  `A_SPosAttack` target guard, `A_FaceTarget` angle update, deterministic
+  spread/damage values, `P_AimLineAttack` target selection, bounded
+  `P_LineAttack` player hit/miss accounting, player `P_DamageMobj` mutation,
+  deferred sound boundary, no player death, absence of generalized
+  AI/projectiles/infighting/death/drop/statusbar systems, preservation
+  signatures, and no `source_stage38` strings.
+- Pinned smoke proves one selected enemy attack produces a measurable player
+  feedback signal while the existing stage36 and stage35 baselines remain
+  inspectable. Stage36 through stage19 signatures are preserved, and the
+  executable contains no `source_stage38` strings.
+
+## Planning Checkpoint After Stage37
+
+Where we are:
+
+- Stage37 crossed one enemy attack feedback boundary without introducing broad
+  monster AI, generalized combat, projectiles, infighting, player death, or a
+  statusbar/HUD rebuild.
+- The released proof now has selected feedback in both directions: player
+  attack into the selected shotgun guy through stages 32-36, and selected
+  shotgun-guy attack back into player state through stage37.
+- The renderer bridges remain selected and compact: wall/flat command-table
+  redraw, selected impact/death/drop/psprite posts, and a tiny stage37 feedback
+  marker/state signature. Generalized sprite traversal remains a later
+  bottleneck.
+
+Next bottleneck:
+
+- Stage37 proved the selected attack/player-feedback state, but the safest
+  releasable executable path reports the timer samples through deterministic
+  title/state signatures rather than forcing a Win32 repaint on every timer
+  tick. Re-enabling that forced repaint exposed a crash in the selected
+  stage37 paint/update edge. Before adding projectile or explosion behavior,
+  the next honest slice should make the selected stage37 feedback marker
+  reliably present through the same window paint path as the existing
+  framebuffer.
+- This is not a retreat from the source-guided Doom goal. A stable
+  timer-driven `draw -> signature -> invalidate/update -> paint` bridge is a
+  prerequisite for a playable renderer/game loop. The next slice should keep
+  gameplay state frozen at stage37 and focus on making the already-selected
+  feedback visual proof visible and smoke-tested without broad UI or renderer
+  rewrites.
+
+## Released Slice: source_stage38_selected_attack_feedback_present_bridge
+
+Output:
+
+```text
+build/source_stage38_selected_attack_feedback_present_bridge.exe
+```
+
+Released goal:
+
+After stage37 proves one selected enemy hitscan feedback event, make that
+feedback reliably visible through the runtime Win32 paint/present path. The
+target is not new combat behavior; it is the selected stage37 feedback marker
+and state signature surviving a timer-driven redraw, invalidation/update, and
+`WM_PAINT` presentation cycle without crashing or corrupting shared status
+buffers.
+
+Released shape:
+
+- Preserves the exact stage37 selected gameplay result: living stage29 shotgun
+  guy, one `A_SPosAttack`, one damaging pellet, player health `100 -> 91`,
+  `damagecount=9`, one deferred `sfx_shotgn`, and no player death.
+- Preserves the stage31-stage36 draw order and command-table paths:
+  clear -> walls/flats -> impact/pain posts -> death posts -> optional
+  dropped-shotgun posts/removal state -> psprite posts -> selected stage37
+  feedback marker -> signature -> present.
+- Fixes the stage37 paint/update crash edge by returning to the stable
+  stage31-stage36 replay-step model: each selected sample draws once, updates
+  title/status state, calls `InvalidateRect(hwnd, NULL, FALSE)`, calls
+  `UpdateWindow`, and kills the timer after the final sample.
+- Adds a bounded stage38 `WM_PAINT` bridge that reuses the framebuffer owner and
+  counts paint calls plus a paint-after-final-feedback-marker observation.
+- Reports `INV38=3`, `UPD38=3`, `PAINT38=3`, `PAF38=1`, distinct `FB38=`
+  signatures, and final-process stability before normal close in smoke.
+- Does not add projectile spawning, explosions, radius damage, infighting,
+  generalized monster AI, generalized sprite traversal, broad HUD/statusbar,
+  map progression, menus, automap, save/load, networking, music, mixer/device
+  playback, or real audio output.
+
+Validation status:
+
+- Stage38 reports `S38SIG=2314527789` and preserves `STATE38=1816157848`.
+- Framebuffer signatures are `2997224612`, `1850654463`, and `4146202648`;
+  the latter two include the compact selected attack/player-feedback marker.
+- Stage37-selected gameplay is preserved: `HP38=100->91`, `ARM38=0->0`,
+  `DMG38=9`, `HIT38=1`, `MISS38=2`, `PEL38=3`, `SFX38=sfx_shotgn`,
+  `SFXC38=1`, `SRC38=MT_SHOTGUY->P0`, and `ATKR38=28`.
+- Stage36 through stage19 baselines are preserved, including
+  `S36SIG=397846180`, `S35SIG=3270148876`, `S34SIG=4027590938`,
+  `S33SIG=1614948054`, `S32SIG=533488475`, `S31SIG=3593583171`,
+  `S30SIG=3898523864`, `S29SIG=3738922932`, `S28SIG=2805406010`,
+  `S27SIG=1735738182`, `S26SIG=132405987`, `S25SIG=1688844032`,
+  `S24SIG=1919312263`, `S23SIG=3216085132`, `S22SIG=2207028069`,
+  `S21SIG=1770773845`, `S20SIG=3226031347`, and `S19SIG=2088411722`.
+- Synthetic tests pin stage37 state preservation, timer sample ordering,
+  status/title buffer and pointer-lifetime invariants, framebuffer ownership,
+  marker bounds, invalidate/update/paint ordering, paint after final marker,
+  distinct marker signatures, absence of full framebuffer byte arrays, absence
+  of new combat systems, preservation signatures, and no `source_stage39`
+  strings.
+- The smoke test launches the executable, observes start/sample/final titles,
+  sees the final paint/present evidence, verifies the process remains alive
+  after the final marker long enough for stability observation, closes normally,
+  and confirms the executable contains no `source_stage39` strings.
+
+## Planning Checkpoint After Stage38
+
+Where we are:
+
+- Stage38 did not add gameplay; it made the selected stage37 attack/player
+  feedback marker survive the normal Win32 invalidation and paint path.
+- The stable loop is now: selected runtime state update -> clear -> wall/flat
+  command tables -> selected impact/death/drop/psprite/feedback primitives ->
+  framebuffer signature -> `InvalidateRect` -> `UpdateWindow` -> `WM_PAINT`.
+- This closes the presentation regression that made stage37 rely on title/state
+  updates for its safest released smoke evidence.
+
+Next bottleneck:
+
+- With present stability restored, the next honest combat slice should choose
+  one source-shaped projectile boundary, not the larger barrel/radius-damage
+  fork. The useful learning target is missile mobj creation, first spawn
+  adjustment, and presentation of that selected projectile state through the
+  stable stage38 redraw path.
+- The next slice should start with a small source/map census for a real imp
+  fireball candidate: a living `MT_TROOP` with player target, outside melee
+  range, clear enough for the selected `A_TroopAttack` missile branch, and a
+  first `P_CheckMissileSpawn` result that can be reported deterministically.
+  If the chosen missile immediately hits geometry, the slice may record the
+  selected `P_ExplodeMissile` death-state boundary, but it should still avoid
+  generalized explosion/radius damage.
+
+## Released Slice: source_stage39_selected_projectile_spawn_present_probe
+
+Output:
+
+```text
+build/source_stage39_selected_projectile_spawn_present_probe.exe
+```
+
+Released shape:
+
+- Stage39 crosses exactly one selected projectile creation/presentation
+  boundary for a real MAP01 imp candidate: `MT_TROOP` mapthing 55 / mobj 42,
+  player target present, outside melee range, selected
+  `A_TroopAttack -> A_FaceTarget -> P_SpawnMissile(MT_TROOPSHOT) ->
+  P_CheckMissileSpawn` route.
+- The emitted record pins `MT_TROOPSHOT`, spawnstate `S_TBALL1`, `SPR_BAL1`
+  frame A/fullbright metadata, source/target markers, angle/momentum, z seed
+  `source->z + 32*FRACUNIT`, deterministic `P_Random()&3` tic adjustment, one
+  selected `P_TryMove` success, no explosion, and one deferred `sfx_firsht`
+  event.
+- The runtime reuses the stage38 presentation loop: selected runtime update ->
+  clear -> walls/flats -> selected impact/death/drop/psprite/feedback ->
+  selected projectile marker/posts -> framebuffer signature ->
+  invalidate/update -> `WM_PAINT`.
+- The selected visual contribution is a compact runtime-drawn projectile
+  marker, not a copied framebuffer. `FB39=2997224612,3296846536,2778992910`,
+  `STATE39=1403583302`, and `S39SIG=3469618451`.
+- Stage39 preserves `S38SIG=2314527789`, `STATE38=1816157848`,
+  `INV38=3`, `UPD38=3`, `PAINT38=3`, `PAF38=1`, stage36-stage31 visual
+  bridges, and stage30-stage19 signatures.
+- Generalized projectile managers, explosions, radius damage, splash damage,
+  infighting, broad monster AI, broad combat loops, player death, enemy
+  kill/drop, generalized sprite traversal, statusbar/HUD rebuilds, map
+  progression, UI systems, and real audio playback remain deferred. The
+  executable contains no `source_stage40` strings.
+
+## Released Slice: source_stage40_bounded_vissprite_traversal_sorting_bridge
+
+Output:
+
+```text
+build/source_stage40_bounded_vissprite_traversal_sorting_bridge.exe
+```
+
+Implemented shape:
+
+- Introduced a bounded source-shaped selected-vissprite route for the stage39
+  `MT_TROOPSHOT` record:
+  `R_AddSprites -> R_ProjectSprite -> R_SortVisSprites -> R_DrawMasked`.
+- Replaced the stage39 compact projectile marker in the stage40 runtime visual
+  path with selected `SPR_BAL1` / BAL1 frame A patch posts emitted from real WAD
+  post data and drawn through the existing column renderer.
+- Preserved source draw order:
+  clear -> stage31 walls/flats -> selected impact/death/drop paths -> selected
+  world vissprite posts -> stage32 shotgun psprite posts -> compact feedback
+  marker/projectile state evidence -> signature -> stage39-style present.
+- Reports `S40SIG=2737672056`, `STATE40=268409133`,
+  `FB40=3448704092,2498345585,3733715286`, and distinct selected-vissprite
+  state samples `1957020629,3758004534,1436017657`.
+- Preserves `S39SIG=3469618451`, `STATE39=1403583302`, stage38 present
+  evidence, stage31-stage36 visual bridges, and stage30-stage19 signatures.
+- Keeps broad all-map sprite traversal, generalized thing iteration,
+  generalized projectile managers, explosions, radius/splash damage,
+  infighting, broad AI/combat, player death, enemy kill/drop, broad HUD/statusbar
+  rebuilds, map progression, UI systems, and real audio deferred. The
+  executable contains no `source_stage41` strings.
+
+## Released Slice: source_stage41_statusbar_weapon_ammo_feedback_bridge
+
+Output:
+
+```text
+build/source_stage41_statusbar_weapon_ammo_feedback_bridge.exe
+```
+
+Implemented shape:
+
+- Adds a compact runtime status strip after the preserved stage40 world
+  vissprite path, stage32 shotgun psprite posts, selected feedback marker, and
+  stage39 projectile state evidence.
+- Bridges selected source-owned player/status state into visible runtime draw
+  primitives: health `100 -> 91`, armor `0`, shell ammo `0 -> 4`, shotgun
+  owned, pending shotgun weapon, `GOTSHOTGUN`, `bonuscount`, `damagecount`,
+  pickup/damage flash blocks, and deferred `sfx_wpnup`, `sfx_shotgn`, and
+  `sfx_firsht` markers.
+- Reports `S41SIG=951695045`, `STATE41=157977072`,
+  `FB41=2820600565,3443819349,1672331767`, and selected status samples
+  `SSTATE41=1548266261,4244284538,3218471217`.
+- Preserves `S40SIG=2737672056`, `STATE40=268409133`, the stage40
+  `MT_TROOPSHOT` / `S_TBALL1` / `SPR_BAL1` bounded selected-vissprite path,
+  stage39 projectile state, stage38 present stability, and all stage37-stage19
+  baselines.
+- Keeps the status surface compact and diagnostic. It does not implement the
+  classic full statusbar layout, face animation, automap, menus, intermission,
+  save/load, networking, music, real audio playback, generalized inventory,
+  generalized item traversal, generalized combat, broad monster AI, player
+  death, enemy kill/drop, broad sprite traversal, projectile managers,
+  explosions, radius/splash damage, infighting, or map progression. The
+  executable contains no `source_stage42` strings.
+
+## Next Releasable Slice: source_stage42_unified_live_tick_render_loop_probe
+
+Output:
+
+```text
+build/source_stage42_unified_live_tick_render_loop_probe.exe
+```
+
+Goal:
+
+After stage41 gives the player a compact persistent feedback surface, merge the
+currently separate selected gameplay proofs into one bounded timer-driven
+`tic -> state update -> render -> present` loop. The goal is still not a full
+game loop. It is the first honest bridge where selected player movement,
+selected weapon/pickup/damage/projectile state, selected world-vissprite
+rendering, psprites, compact status feedback, framebuffer signatures, and
+stable present all advance under one replay controller.
+
+Why this is still the right next slice:
+
+- Stage41 solved the biggest user-facing observability gap without starting a
+  broad HUD. The remaining integration gap is that many proven subsystems still
+  live as adjacent selected samples rather than as one coherent source-shaped
+  tick/render pipeline.
+- A playable demo will require source-owned cadence before it requires broader
+  feature coverage. The next slice should therefore prove that one deterministic
+  controller can run selected `G_Ticker` / `P_Ticker` style state updates,
+  selected rendering, compact status feedback, and Win32 present in the same
+  per-tic order.
+- This keeps the end goal honest: build Doom behavior from source without a
+  compiler, while retiring harness special cases only when a runnable slice can
+  prove the replacement.
+
+Likely source reads:
+
+- Source-read `d_loop.c`, `g_game.c`, `p_tick.c`, `p_user.c`, `p_pspr.c`,
+  `p_mobj.c`, `p_enemy.c`, `r_main.c`, and `i_video.c` only for the narrow
+  control-flow ownership needed to justify the unified loop order.
+- Re-read the stage41 source owners only where the loop needs ownership of
+  status update cadence: `st_stuff.c`, `hu_stuff.c`, `p_inter.c`, and
+  `p_pspr.c`.
+
+Likely runtime shape:
+
+- Keep the input deterministic and bounded. Use a tiny scripted `ticcmd_t`
+  sequence, not generalized keyboard/mouse input, menus, demo sync, networking,
+  or save/load.
+- Combine already-proven selected subsystems in source order under one emitted
+  runtime loop:
+  `D_DoomLoop/I_StartTic` boundary -> deterministic `ticcmd_t` intake ->
+  `G_Ticker` style selected player command ownership -> `P_Ticker` style
+  selected player/thinker updates -> selected psprite and weapon state ->
+  selected pickup/damage/projectile state updates -> `R_RenderPlayerView`
+  style clear/wall/flat/world-vissprite/psprite draw -> compact status strip ->
+  framebuffer/state signatures -> `InvalidateRect` / `UpdateWindow` /
+  `WM_PAINT`.
+- Keep the selected mobj set tiny: player, one living shotgun guy or imp,
+  the selected dropped shotgun state when applicable, and the selected
+  `MT_TROOPSHOT` projectile. Do not introduce broad map thing iteration.
+- Prefer reusing the stage31 wall/flat command-table redraw, stage40 selected
+  world-vissprite draw path, stage32 selected psprite path, and stage41 compact
+  status draw table instead of adding new rendering features.
+- Report per-tic state deltas, selected mobj/player/weapon/status signatures,
+  per-frame framebuffer/status/vissprite signatures, present counters, and a
+  proof that the final frame remains stable long enough for smoke observation.
+- Stop before live keyboard/mouse input, generalized thinkers, generalized
+  collision/projectile managers, broad monster AI, broad inventory traversal,
+  map progression, menus, automap, save/load, networking, music, mixer/device
+  playback, and real audio output.
 
 Validation shape:
 
-- Synthetic tests for selected enemy attack state/action ordering, line attack
-  target selection, player damage mutation, feedback marker/reporting, absence
-  of generalized AI/projectiles/death/drop, preservation signatures, and no
-  `source_stage38` strings.
-- Pinned smoke proving one selected enemy attack produces a measurable player
-  feedback signal while the existing stage36 and stage35 baselines remain
-  inspectable.
+- Tests should prove unified ordering, deterministic replay, stable present
+  after the final unified sample, preservation of stage41 through stage19
+  signatures, absence of broad systems, no full-frame copies, no compiler or
+  compiled blob usage, and no `source_stage43` strings.
+- Tests should explicitly prove that status feedback updates happen after the
+  selected gameplay state mutation and after world/psprite draws, and that at
+  least two final-loop samples differ by selected state and framebuffer
+  signatures rather than title-only counters.
+
+## Releasable Slice After That: source_stage43_bounded_projectile_tick_collision_feedback_probe
+
+Output:
+
+```text
+build/source_stage43_bounded_projectile_tick_collision_feedback_probe.exe
+```
+
+Goal:
+
+After stage42 owns a unified bounded tick/render loop, advance the selected
+`MT_TROOPSHOT` from a spawn/present proof into a tiny source-shaped projectile
+tick and collision feedback proof. The goal is not a generalized projectile
+manager or explosion system. It is one selected missile thinker moving under
+the unified loop, checking one bounded map/player collision result, and feeding
+the compact status/player-feedback surface if damage occurs.
+
+Likely shape:
+
+- Source-read `p_mobj.c` `P_MobjThinker`, `P_XYMovement`,
+  `P_CheckMissileSpawn`, missile state transition ownership, and only the
+  narrow impact/death-state boundary if the selected collision reaches it, plus
+  the `p_map.c` / `p_maputl.c` route needed for one bounded `P_TryMove` or
+  intercept/collision check.
+- Reuse stage39 projectile spawn metadata and stage40 BAL1 selected-vissprite
+  rendering. The new behavior should be projectile lifetime movement/collision
+  under stage42's loop, not a new sprite renderer.
+- Select one deterministic outcome: either a bounded fly-forward sample that
+  remains alive and visibly moves for several tics, or a single source-shaped
+  impact against the player/map boundary. If the selected outcome damages the
+  player, reuse the stage37/stage41 health, `damagecount`, flash, and deferred
+  sound markers.
+- Keep explosions/radius damage/splash damage, generalized missile lists,
+  broad monster AI, infighting, player death, and map progression deferred.
+
+Validation shape:
+
+- Tests should prove projectile thinker ordering inside the unified loop,
+  deterministic position/momentum/tic changes, one bounded collision or
+  no-collision decision, preserved BAL1 world-vissprite rendering, status
+  feedback contribution when applicable, stable present after the final
+  projectile sample, preservation of stage42 through stage19 signatures, no
+  full-frame copies, and no `source_stage44` strings.
 
 ## Future Backlog
 
-Likely later slices after stage37, intentionally kept mostly as headlines:
+Likely later slices after stage43, intentionally kept mostly as headlines:
 
-- `source_stage38_selected_projectile_or_barrel_visual_probe`: one selected
-  projectile/barrel route, not a full projectile system.
-- `source_stage39_generalized_sprite_traversal_and_sorting_bridge`: replace
-  selected world-post tables with a bounded source-shaped sprite traversal
-  bridge.
-- `source_stage40_statusbar_weapon_ammo_feedback_bridge`
-- `source_stage41_unified_live_tick_render_loop_probe`
-- `source_stage42_map_progression_and_demo_determinism_probe`
-- `source_stage43_menu_automap_save_load_shells`
-- `source_stage44_real_audio_device_output_and_mixer_integration`
-- `source_stage45_playable_shareware_style_vertical_slice`
+- `source_stage44_bounded_monster_chase_path_and_melee_probe`
+- `source_stage45_player_damage_death_respawn_boundary`
+- `source_stage46_generalized_pickup_weapon_ammo_bridge`
+- `source_stage47_small_map_progression_and_exit_boundary`
+- `source_stage48_demo_determinism_and_input_record_probe`
+- `source_stage49_menu_automap_save_load_shells`
+- `source_stage50_real_audio_device_output_and_mixer_integration`
+- `source_stage51_playable_shareware_style_vertical_slice`
+- `source_stage52_polish_and_playability_stabilization`
 
-At that point the fixed render harness can start becoming a small playable
-demo, not just a chain of source-shaped renderer/gameplay proofs.
+At or around that point the fixed render harness should be able to become a
+small playable demo, not just a chain of source-shaped renderer/gameplay
+proofs.
+
+## Planning Estimate After Stage41
+
+The current roadmap places a playable shareware-style vertical slice at
+`source_stage51` or `source_stage52`, which means roughly 10-11 more releasable
+stages from the stage41 baseline if the next assumptions hold. A realistic
+range is 8-13 more stages: fewer if stage42's unified loop absorbs more of the
+existing selected proofs than expected, more if projectile collision, broad
+sprite traversal, live input, UI shells, or audio integration expose another
+strict source-order boundary that deserves its own runnable proof.

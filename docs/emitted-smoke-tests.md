@@ -2391,3 +2391,157 @@ and the shotgun through `P_GiveWeapon(... dropped=true)`, reports `GOTSHOTGUN`,
 the selected item, and shows `DROP36=REMOVED` / `DRC36=0` in the final frame.
 The smoke must see distinct `FB36=` values, `S36SIG=397846180`,
 `S35SIG=3270148876`, and no `source_stage37` strings in the executable.
+
+## Source Stage37 Selected Monster Attack Feedback Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage37_selected_monster_attack_feedback_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage37_selected_monster_attack_feedback_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage37_selected_monster_attack_feedback_probe.SourceStage37SelectedMonsterAttackFeedbackProbeTests.test_smoke_launch_reports_stage37_attack_feedback_and_distinct_signatures
+```
+
+Stage37 preserves the stage36 pickup/removal state and the stage31-stage35
+visual bridges, then returns to the selected living stage29 shotgun-guy route.
+The selected `A_SPosAttack` proof reports one deferred `sfx_shotgn`, a selected
+`A_FaceTarget` angle update, three deterministic pellet records, one player
+damage event, health `100->91`, armor `0->0`, `damagecount=9`, source marker
+`MT_SHOTGUY->P0`, and no player death. The smoke must see distinct `FB37=`
+values, `STATE37=1816157848`, `S37SIG=2681905384`, preserved
+`S36SIG=397846180` and `S19SIG=2088411722`, and no `source_stage38` strings in
+the executable.
+
+## Source Stage38 Selected Attack Feedback Present Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage38_selected_attack_feedback_present_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage38_selected_attack_feedback_present_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage38_selected_attack_feedback_present_bridge.SourceStage38SelectedAttackFeedbackPresentBridgeTests.test_smoke_launch_reports_stage38_attack_feedback_and_distinct_signatures
+```
+
+Stage38 preserves the stage37 selected `A_SPosAttack` gameplay feedback and
+restores the bounded Win32 present path. The smoke must see distinct `FB38=`
+values, `STATE38=1816157848`, `S38SIG=2314527789`, `HP38=100->91`,
+`DMG38=9`, `SFX38=sfx_shotgn`, and present evidence `INV38=3`, `UPD38=3`,
+`PAINT38=3`, `PAF38=1`. It also verifies the process remains alive after the
+final feedback marker long enough for a stability observation, closes normally,
+preserves `S36SIG=397846180` and `S19SIG=2088411722`, and contains no
+`source_stage39` strings in the executable.
+
+## Source Stage39 Selected Projectile Spawn Present Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage39_selected_projectile_spawn_present_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage39_selected_projectile_spawn_present_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage39_selected_projectile_spawn_present_probe.SourceStage39SelectedProjectileSpawnPresentProbeTests.test_smoke_executable_launches_reports_projectile_samples_and_closes
+```
+
+Stage39 preserves stage38 present stability, then crosses one selected imp
+fireball creation/presentation boundary:
+`A_TroopAttack -> A_FaceTarget -> P_SpawnMissile(MT_TROOPSHOT) ->
+P_CheckMissileSpawn`. The smoke must see distinct `FB39=` values,
+`STATE39=1403583302`, `S39SIG=3469618451`, `MISS39=MT_TROOPSHOT`,
+`ST39=S_TBALL1`, `SPR39=SPR_BAL1`, `SFX39=sfx_firsht`, and present evidence
+`INV39=3`, `UPD39=3`, `PAINT39=3`, `PAF39=1`. It also verifies preserved
+stage38 evidence `INV38=3`, `UPD38=3`, `PAINT38=3`, `PAF38=1`, preserved
+baselines through `S19SIG=2088411722`, no copied full-frame projectile motion,
+and no `source_stage40` strings in the executable.
+
+## Source Stage40 Bounded Vissprite Traversal Sorting Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage40_bounded_vissprite_traversal_sorting_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage40_bounded_vissprite_traversal_sorting_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage40_bounded_vissprite_traversal_sorting_bridge.SourceStage40BoundedVisspriteTraversalSortingBridgeTests.test_smoke_executable_launches_reports_vissprite_samples_and_closes
+```
+
+Stage40 preserves the stage39 selected projectile state and present bridge,
+then replaces the compact stage39 projectile marker in the stage40 visual path
+with bounded selected `MT_TROOPSHOT` / BAL1 world-vissprite posts:
+`R_AddSprites -> R_ProjectSprite -> R_SortVisSprites -> R_DrawMasked`. The
+smoke must see distinct `FB40=` and `VSTATE40=` values, `STATE40=268409133`,
+`S40SIG=2737672056`, `PATCH40=BAL1`, `MISS39=MT_TROOPSHOT`,
+`PST39=1403583302`, present evidence `INV40=3`, `UPD40=3`, `PAINT40=3`,
+`PAF40=1`, preserved stage39 evidence `INV39=3`, `UPD39=3`, `PAINT39=3`,
+`PAF39=1`, preserved baselines through `S19SIG=2088411722`, no copied
+full-frame selected-vissprite motion, and no `source_stage41` strings in the
+executable.
+
+## Source Stage41 Statusbar Weapon Ammo Feedback Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage41_statusbar_weapon_ammo_feedback_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage41_statusbar_weapon_ammo_feedback_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage41_statusbar_weapon_ammo_feedback_bridge.SourceStage41StatusbarWeaponAmmoFeedbackBridgeTests.test_smoke_executable_launches_reports_status_samples_and_closes
+```
+
+Stage41 preserves the stage40 bounded selected-vissprite path and adds a
+compact runtime status strip after the world-vissprite, psprite, feedback, and
+projectile evidence draws. The smoke must see distinct `FB41=` and
+`SSTATE41=` values, `STATE41=157977072`, `S41SIG=951695045`, selected
+health/armor/ammo/weapon/message evidence including `HP41=100->91`,
+`ARM41=0`, `AMMO41=0->4`, `OWN41=0->1`, `PEND41=WP_SHOTGUN`,
+`MSG41=GOTSHOTGUN`, `BONUS41=6`, `DMG41=9`, deferred sound markers
+`SFX41=sfx_wpnup+sfx_shotgn+sfx_firsht`, present evidence `INV41=3`,
+`UPD41=3`, `PAINT41=3`, `PAF41=1`, preserved stage40/stage39 present evidence
+and baselines through `S19SIG=2088411722`, no copied full-frame status motion,
+and no `source_stage42` strings in the executable.
