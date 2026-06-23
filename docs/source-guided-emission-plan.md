@@ -55,7 +55,16 @@ smaller or differently ordered step would be more honest.
 5. Keep the released debug stages as proofs, but do not build the next phase by
    piling more special cases into them.
 
-## Current Baseline: source_stage41_statusbar_weapon_ammo_feedback_bridge
+## Current Baseline: source_stage47_bounded_map01_player_route_first_hostile_sight_bridge
+
+The current PE32 baseline now owns a real 44-tic MAP01 player route in emitted
+x86. Stage47 mutates player x/y, angle, momentum, sector, and subsector through
+bounded source-shaped movement/collision evidence, checks all 18 monsters, and
+stops at the earliest geometric sight result. The contact remains a null-target
+stand-state actor: hostile awareness, combat, and broad runtime managers remain
+deferred. Rendering still uses finite source-derived views plus runtime
+primitives, and the selected projectile/status/signature/Win32 present order is
+preserved.
 
 The source-guided line now covers WAD/map setup, BSP setup structures,
 source-ordered BSP traversal, Doom-shaped bbox/frustum visibility, and live
@@ -270,7 +279,35 @@ armor, shell ammo, shotgun ownership, pending weapon, `GOTSHOTGUN`,
 `sfx_wpnup`, `sfx_shotgn`, and `sfx_firsht` markers. It is intentionally not a
 classic full statusbar or HUD rebuild; it gives later live-loop slices a stable
 place to expose player-facing state while broad UI remains deferred.
-It still stops before generalized continuous camera rendering,
+Stage42 now merges the already-proven selected systems into one bounded
+timer-driven source-shaped replay controller:
+deterministic ticcmd intake, selected `G_Ticker` / `P_Ticker` style player and
+tiny mobj state mutation, selected psprite/weapon and pickup/damage/projectile
+state, stage31 wall/flat redraw, stage40 selected world-vissprite posts,
+stage32 shotgun psprite posts, stage41 compact status feedback, signatures, and
+stable `InvalidateRect -> UpdateWindow -> WM_PAINT` present.
+Stage43 carries the selected `MT_TROOPSHOT` past spawn/present evidence into a
+bounded `P_MobjThinker -> P_XYMovement -> P_TryMove` missile tick proof. The
+released outcome is an honest MAP01 no-collision/no-damage fly-forward window:
+the missile advances from `(1332,-435)` to `(1350,-444)` map units, decrements
+`S_TBALL1` tics `4 -> 2`, preserves the BAL1 world-vissprite/status/present
+path, and reports explicit no-collision feedback rather than forcing impact or
+player damage.
+Stage44 reintroduces the stage28 replay/live `ticcmd_t` owner inside that
+unified cadence. Three deterministic commands now mutate selected player
+movement/view state through `P_MovePlayer -> P_Thrust -> P_XYMovement ->
+P_TryMove`, select one of three finite redraw routes, and preserve the stage43
+projectile, stage41 compact status, BAL1 world-vissprite, psprite, signature,
+and present order. Optional `-live` input uses the same bounded command fields.
+Stage45 then services one selected hostile thinker after the stage44 player
+update. The real MAP01 shotgun guy (`mobj 28`, mapthing `37`) transitions from
+`S_SPOS_RUN1` to `S_SPOS_RUN2`; its sight-first missile check is blocked by the
+real BSP, it has no melee state, and it reaches no attack or damage action.
+`A_Chase` honestly falls through to `P_NewChaseDir/P_Move`, where one chase
+move is accepted after two blocked alternatives. Three distinct monster and
+unified state signatures plus a runtime primitive marker prove the decision in
+the same player -> monster -> projectile -> status -> present cadence.
+The current line still stops before generalized continuous camera rendering,
 generalized combat, generalized monster AI/chase, generalized sprite traversal,
 generalized death/drop/item systems, generalized specials, generalized
 doors/switches, generalized floor/plat/ceiling families beyond the selected
@@ -4716,7 +4753,7 @@ Implemented shape:
   explosions, radius/splash damage, infighting, or map progression. The
   executable contains no `source_stage42` strings.
 
-## Next Releasable Slice: source_stage42_unified_live_tick_render_loop_probe
+## Released Slice: source_stage42_unified_live_tick_render_loop_probe
 
 Output:
 
@@ -4724,80 +4761,31 @@ Output:
 build/source_stage42_unified_live_tick_render_loop_probe.exe
 ```
 
-Goal:
+Implemented shape:
 
-After stage41 gives the player a compact persistent feedback surface, merge the
-currently separate selected gameplay proofs into one bounded timer-driven
-`tic -> state update -> render -> present` loop. The goal is still not a full
-game loop. It is the first honest bridge where selected player movement,
-selected weapon/pickup/damage/projectile state, selected world-vissprite
-rendering, psprites, compact status feedback, framebuffer signatures, and
-stable present all advance under one replay controller.
+- Adds a tiny deterministic scripted `ticcmd_t` table and an emitted timer
+  replay controller shaped by `D_DoomLoop/I_StartTic`, selected
+  `G_Ticker` command ownership, selected `P_Ticker` update ordering, selected
+  player/psprite/weapon state, and selected pickup/damage/projectile state.
+- Reuses the stage31 wall/flat runtime command tables, stage40 selected
+  world-vissprite path, stage32 shotgun psprite posts, stage38/stage39 present
+  stability, and stage41 compact status strip. The visual/state changes are
+  generated by runtime primitives and scalar selected-state tables, not copied
+  full-frame framebuffer arrays.
+- Reports `S42SIG=2427416971`, `STATE42=2148021159`,
+  `ULSTATE42=1903094291,1130420740,3331619657`, and
+  `FB42=2820600565,3443819349,1672331767`.
+- Preserves `S41SIG=951695045`, `STATE41=157977072`,
+  `S40SIG=2737672056`, `STATE40=268409133`, `S39SIG=3469618451`,
+  `STATE39=1403583302`, `S38SIG=2314527789`, `STATE38=1816157848`, and all
+  stage37-stage19 baselines.
+- Keeps live keyboard/mouse input, generalized thinkers, generalized collision,
+  generalized projectile managers, explosions, radius/splash damage, broad
+  monster AI/combat/inventory/HUD/UI, player death, enemy kill/drop, broad
+  all-map sprite traversal, map progression, music, real audio, and mixer/device
+  playback deferred. The executable contains no `source_stage43` strings.
 
-Why this is still the right next slice:
-
-- Stage41 solved the biggest user-facing observability gap without starting a
-  broad HUD. The remaining integration gap is that many proven subsystems still
-  live as adjacent selected samples rather than as one coherent source-shaped
-  tick/render pipeline.
-- A playable demo will require source-owned cadence before it requires broader
-  feature coverage. The next slice should therefore prove that one deterministic
-  controller can run selected `G_Ticker` / `P_Ticker` style state updates,
-  selected rendering, compact status feedback, and Win32 present in the same
-  per-tic order.
-- This keeps the end goal honest: build Doom behavior from source without a
-  compiler, while retiring harness special cases only when a runnable slice can
-  prove the replacement.
-
-Likely source reads:
-
-- Source-read `d_loop.c`, `g_game.c`, `p_tick.c`, `p_user.c`, `p_pspr.c`,
-  `p_mobj.c`, `p_enemy.c`, `r_main.c`, and `i_video.c` only for the narrow
-  control-flow ownership needed to justify the unified loop order.
-- Re-read the stage41 source owners only where the loop needs ownership of
-  status update cadence: `st_stuff.c`, `hu_stuff.c`, `p_inter.c`, and
-  `p_pspr.c`.
-
-Likely runtime shape:
-
-- Keep the input deterministic and bounded. Use a tiny scripted `ticcmd_t`
-  sequence, not generalized keyboard/mouse input, menus, demo sync, networking,
-  or save/load.
-- Combine already-proven selected subsystems in source order under one emitted
-  runtime loop:
-  `D_DoomLoop/I_StartTic` boundary -> deterministic `ticcmd_t` intake ->
-  `G_Ticker` style selected player command ownership -> `P_Ticker` style
-  selected player/thinker updates -> selected psprite and weapon state ->
-  selected pickup/damage/projectile state updates -> `R_RenderPlayerView`
-  style clear/wall/flat/world-vissprite/psprite draw -> compact status strip ->
-  framebuffer/state signatures -> `InvalidateRect` / `UpdateWindow` /
-  `WM_PAINT`.
-- Keep the selected mobj set tiny: player, one living shotgun guy or imp,
-  the selected dropped shotgun state when applicable, and the selected
-  `MT_TROOPSHOT` projectile. Do not introduce broad map thing iteration.
-- Prefer reusing the stage31 wall/flat command-table redraw, stage40 selected
-  world-vissprite draw path, stage32 selected psprite path, and stage41 compact
-  status draw table instead of adding new rendering features.
-- Report per-tic state deltas, selected mobj/player/weapon/status signatures,
-  per-frame framebuffer/status/vissprite signatures, present counters, and a
-  proof that the final frame remains stable long enough for smoke observation.
-- Stop before live keyboard/mouse input, generalized thinkers, generalized
-  collision/projectile managers, broad monster AI, broad inventory traversal,
-  map progression, menus, automap, save/load, networking, music, mixer/device
-  playback, and real audio output.
-
-Validation shape:
-
-- Tests should prove unified ordering, deterministic replay, stable present
-  after the final unified sample, preservation of stage41 through stage19
-  signatures, absence of broad systems, no full-frame copies, no compiler or
-  compiled blob usage, and no `source_stage43` strings.
-- Tests should explicitly prove that status feedback updates happen after the
-  selected gameplay state mutation and after world/psprite draws, and that at
-  least two final-loop samples differ by selected state and framebuffer
-  signatures rather than title-only counters.
-
-## Releasable Slice After That: source_stage43_bounded_projectile_tick_collision_feedback_probe
+## Released Slice: source_stage43_bounded_projectile_tick_collision_feedback_probe
 
 Output:
 
@@ -4805,66 +4793,414 @@ Output:
 build/source_stage43_bounded_projectile_tick_collision_feedback_probe.exe
 ```
 
-Goal:
+Implemented shape:
 
-After stage42 owns a unified bounded tick/render loop, advance the selected
-`MT_TROOPSHOT` from a spawn/present proof into a tiny source-shaped projectile
-tick and collision feedback proof. The goal is not a generalized projectile
-manager or explosion system. It is one selected missile thinker moving under
-the unified loop, checking one bounded map/player collision result, and feeding
-the compact status/player-feedback surface if damage occurs.
+- Reuses stage42's deterministic timer replay, stage41 compact status strip,
+  stage40 BAL1 world-vissprite path, stage39 `MT_TROOPSHOT` spawn metadata,
+  and the stable `InvalidateRect -> UpdateWindow -> WM_PAINT` present bridge.
+- Adds one bounded selected projectile thinker proof shaped by
+  `P_MobjThinker -> P_XYMovement -> P_CheckPosition/P_TryMove` over the pinned
+  MAP01 blockmap/thing lists. The selected missile starts from the stage39
+  post-spawn half-step, advances two live thinker ticks, and remains in
+  `S_TBALL1` with tics `4 -> 3 -> 2`.
+- Selects the honest outcome from the source/map evidence: no player/map
+  collision in the bounded window. The proof reports accepted `P_TryMove`
+  samples, the selected source-thing skip, player distance still far beyond
+  combined radii, `NOCOLL43=1`, `NODMG43=1`, no impact, no explosion, and no
+  player-state mutation beyond the already-preserved stage41 feedback.
+- Draws a tiny runtime feedback marker after the preserved stage42 render path
+  so the framebuffer changes come from runtime primitives and scalar state
+  tables, not full-frame framebuffer copies.
+- Reports `S43SIG=2916740242`, `STATE43=801364352`,
+  `PSTATE43=2141010421,1184488335,467194799`,
+  `ULSTATE43=531845647,3017464017,3895028583`, and
+  `FB43=832571689,3232273554,3301289045`.
+- Preserves `S42SIG=2427416971`, `STATE42=2148021159`,
+  `S41SIG=951695045`, `STATE41=157977072`, `S40SIG=2737672056`,
+  `STATE40=268409133`, `S39SIG=3469618451`, `STATE39=1403583302`,
+  `S38SIG=2314527789`, `STATE38=1816157848`, and all stage37-stage19
+  baselines.
+- Keeps live input, generalized thinkers, generalized collision/projectile
+  managers, broad monster AI/combat/inventory/HUD/UI, player death, enemy
+  kill/drop, explosions, radius damage, splash damage, infighting, map
+  progression, save/load, networking, music, real audio, and mixer/device
+  playback deferred. The executable contains no `source_stage44` strings.
 
-Likely shape:
+## Released Slice: source_stage44_live_ticcmd_unified_player_render_loop_bridge
 
-- Source-read `p_mobj.c` `P_MobjThinker`, `P_XYMovement`,
-  `P_CheckMissileSpawn`, missile state transition ownership, and only the
-  narrow impact/death-state boundary if the selected collision reaches it, plus
-  the `p_map.c` / `p_maputl.c` route needed for one bounded `P_TryMove` or
-  intercept/collision check.
-- Reuse stage39 projectile spawn metadata and stage40 BAL1 selected-vissprite
-  rendering. The new behavior should be projectile lifetime movement/collision
-  under stage42's loop, not a new sprite renderer.
-- Select one deterministic outcome: either a bounded fly-forward sample that
-  remains alive and visibly moves for several tics, or a single source-shaped
-  impact against the player/map boundary. If the selected outcome damages the
-  player, reuse the stage37/stage41 health, `damagecount`, flash, and deferred
-  sound markers.
-- Keep explosions/radius damage/splash damage, generalized missile lists,
-  broad monster AI, infighting, player death, and map progression deferred.
+Output:
+
+```text
+build/source_stage44_live_ticcmd_unified_player_render_loop_bridge.exe
+```
+
+Implemented shape:
+
+- Reuses stage43's unified render/projectile/status/present cadence and
+  reintroduces the already-proven stage28 bounded live-input bridge. Default
+  smoke mode remains deterministic replay; `-live` enables bounded Win32
+  keydown/keyup state for forward/back, turn left/right, and use.
+- The replay path owns the `ticcmd_t` table and explicitly ignores active live
+  key state. Synthetic tests prove the same `gamekeydown[]`/`ticcmd_t` bridge
+  builds live commands and that replay wins when both live keys and replay
+  commands are present.
+- Selected player/view state is updated through the source-shaped
+  `P_MovePlayer -> P_Thrust -> P_XYMovement -> P_CheckPosition/P_TryMove`
+  subset over pinned MAP01 evidence. The bounded replay moves from
+  `(-192,-192)` to `(-190,-193)` and reports accepted `P_TryMove` samples for
+  the moving commands.
+- Redraw remains finite and explicit: three source-derived stage31/stage40/43
+  samples are selected by a bounded route table (`ROUTE44=bounded3`,
+  `FREE44=0`). Stage44 adds a tiny runtime player/view marker after the
+  preserved stage43 frame; framebuffer changes come from scalar tables and
+  emitted primitive loops, not full-frame framebuffer copies.
+- Stage43's selected `MT_TROOPSHOT` thinker feedback, stage40 BAL1
+  world-vissprite path, stage32 psprite path, stage41 compact status, and final
+  Win32 present path are preserved.
+- Reports `S44SIG=1090523498`, `STATE44=904132091`,
+  `PVSTATE44=357948012,892576224,2418604776`,
+  `ULSTATE44=2223136105,28118546,1194642191`, and
+  `FB44=2010236716,1358571739,2958912480`.
+- Preserves `S43SIG=2916740242`, `STATE43=801364352`,
+  `S42SIG=2427416971`, `STATE42=2148021159`, `S41SIG=951695045`,
+  `STATE41=157977072`, `S40SIG=2737672056`, `STATE40=268409133`,
+  `S39SIG=3469618451`, `STATE39=1403583302`, and all stage38-stage19
+  baselines.
+- Keeps free-roaming arbitrary-view rendering, generalized thinkers,
+  generalized collision/projectile managers, broad monster AI/combat/sprite
+  traversal/inventory/HUD/UI, player death, enemy kill/drop, explosions,
+  radius/splash damage, infighting, map progression, save/load, networking,
+  music, real audio, and mixer/device playback deferred. The executable
+  contains no `source_stage45` strings.
 
 Validation shape:
 
-- Tests should prove projectile thinker ordering inside the unified loop,
-  deterministic position/momentum/tic changes, one bounded collision or
-  no-collision decision, preserved BAL1 world-vissprite rendering, status
-  feedback contribution when applicable, stable present after the final
-  projectile sample, preservation of stage42 through stage19 signatures, no
-  full-frame copies, and no `source_stage44` strings.
+- `tests/test_source_stage44_live_ticcmd_unified_player_render_loop_bridge.py`
+  proves source trace coverage, replay/live ticcmd ownership, bounded key
+  transitions, selected player/view mutation, finite redraw selection,
+  projectile/status/present preservation, stage43-through-stage19 baselines, no
+  full-frame copies, no deferred broad systems, no `source_stage45` strings,
+  and the GUI smoke launch/close path.
+
+## Released Slice: source_stage45_bounded_monster_chase_path_attack_decision_probe
+
+Output:
+
+```text
+build/source_stage45_bounded_monster_chase_path_attack_decision_probe.exe
+```
+
+Implemented shape:
+
+- Reuses the stage29 selected MAP01 shotgun guy (`mobj 28`, mapthing `37`) at
+  the reached `S_SPOS_RUN1` state, pins one remaining state tic, and services
+  that one actor after each stage44 player command/update sample.
+- The first integrated thinker tic performs the honest source-shaped branch:
+  `P_MobjThinker` transitions `S_SPOS_RUN1/T1 -> S_SPOS_RUN2/T3`, dispatches
+  `A_Chase`, and checks the live/replay player target at `(-192,-192)` with
+  health `91`. `P_CheckSight` traverses eight BSP nodes, one subsector, one
+  seg, and one crossed line and returns blocked.
+- Because the shotgun guy has no melee state, `P_CheckMeleeRange` is not
+  applicable. `P_CheckMissileRange` runs once and rejects the attack on the
+  failed sight result. No attack state/action or damage path is reached.
+- `A_Chase` falls through to `P_NewChaseDir/P_Move`. Three selected chase move
+  attempts produce one accepted and two blocked results. Including the
+  preceding residual-momentum service, the first thinker sample reports four
+  `P_TryMove` calls, two accepts, and two rejects over real MAP01 block data.
+- The remaining two cadence samples decrement `S_SPOS_RUN2` tics `3 -> 2 ->
+  1`. All three monster decision/state signatures differ.
+- A compact monster marker is drawn from scalar sample tables after the
+  preserved player/monster/projectile/status update ordering. No full-frame
+  framebuffer copy is emitted.
+- Reports `S45SIG=799763036`, `STATE45=1707493859`,
+  `MSTATE45=2099866182,4104622831,802996254`,
+  `ULSTATE45=3743123641,634485342,4107409497`, and
+  `FB45=135776868,2645699933,4149793188`.
+- Preserves stage44 live/replay command ownership and finite redraw route,
+  stage43 selected `MT_TROOPSHOT`, stage41 compact status, stage40 BAL1
+  world-vissprite, stage39 projectile state, and every stage43-stage19
+  signature.
+- Keeps generalized thinkers/pathing/collision/combat, broad sprite traversal,
+  inventory/HUD/UI, death/respawn, map progression, save/load, networking,
+  music, real audio, and mixer playback deferred. The executable contains no
+  `source_stage46` strings.
+
+Validation shape:
+
+- `tests/test_source_stage45_bounded_monster_chase_path_attack_decision_probe.py`
+  proves exact actor/target/state/sight/move/attack evidence, player -> monster
+  -> projectile -> status -> present ordering, three distinct decision and
+  unified signatures, primitive-only framebuffer changes, zero damage with an
+  explicit reason, stage44 and stage43-stage19 preservation, paint after the
+  final sample, absence of deferred broad systems and `source_stage46`
+  strings, and GUI launch/title/close behavior.
+
+## Released Slice: source_stage46_repeatable_selected_monster_thinker_cadence_bridge
+
+Output:
+
+```text
+build/source_stage46_repeatable_selected_monster_thinker_cadence_bridge.exe
+```
+
+Released result:
+
+- Emitted x86 now owns and mutates the selected actor's `state`, `tics`, x/y,
+  momentum, `threshold`, `movedir`, and `movecount` once per accepted replay or
+  live tic. A compact eight-entry table contains only the
+  `S_SPOS_RUN1..RUN8` tics, nextstate, and `A_Chase` dispatch flag.
+- The seven-tic replay performs three honest `A_Chase` dispatches. At tic 4,
+  `S_SPOS_RUN2/T1 -> S_SPOS_RUN3/T3` dispatches `A_Chase`; nonzero
+  `movecount` takes the source `nomissile` gate, then five movement attempts
+  block and direction 7 succeeds. Tic 7 transitions to `S_SPOS_RUN4/T3` and
+  accepts the current direction directly.
+- `P_Move`, `P_TryWalk`, `P_NewChaseDir`, and `P_TryMove` execute in emitted
+  x86. The only Python-emitted MAP01 movement table records requested x/y
+  inputs, direction/kind, accepted or blocked outcomes, line/thing counts, and
+  bounded random movecount results. It contains no complete actor frames.
+- The first action's missile check reuses the honest blocked BSP sight
+  evidence. Later actions take the nonzero-movecount gate, so attack state,
+  attack action, damage, and stage41 health/status remain unchanged.
+- Runtime actor x/y/state selects a small filled marker primitive. The binary
+  contains neither full framebuffer copies nor stage45's obsolete per-frame
+  actor snapshot records.
+- Player -> monster -> selected projectile -> status -> signatures -> present
+  ordering is preserved, with one final paint after sample seven.
+- Reports `S46SIG=2719909431`, `STATE46=4094043488`,
+  `MSTATE46=2557949986,3037306965,2247320167,29004293,3810739213,1892788599,533767476`,
+  `ULSTATE46=1560044802,2153923995,1942825685,2641348968,2957418852,1405647190,3637274982`,
+  and `FB46=1154819706,2382271357,1757537078,190720345,3141461029,3141461029,3905320152`.
+- Preserves the stage45 signatures exactly, stage44 replay/live ownership, and
+  all documented stage43-stage19 baselines. Generalized thinkers, pathfinding,
+  collision, combat, rendering, UI, progression, save/load, networking, and
+  audio remain deferred.
+
+Validation:
+
+- `tests/test_source_stage46_repeatable_selected_monster_thinker_cadence_bridge.py`
+  proves runtime-owned multi-tic mutation, the bounded state loop, all three
+  chase dispatches, tic-4 and tic-7 movement evidence, replay/live ownership,
+  strict update/present ordering, distinct signatures, exact no-damage reason,
+  stage45-stage19 preservation, primitive-only redraw, executable launch,
+  final paint, and clean close.
+
+## Released Slice: source_stage47_bounded_map01_player_route_first_hostile_sight_bridge
+
+Output:
+
+```text
+build/source_stage47_bounded_map01_player_route_first_hostile_sight_bridge.exe
+```
+
+Released result:
+
+- The replay is the three-command stage44 prefix followed by 41
+  `forwardmove=25` commands. Emitted x86 owns and mutates player x/y, angle,
+  x/y momentum, sector, and subsector for all 44 accepted tics; the final fixed
+  state is `(5560497,-12593285)`, map position `(84,-193)`, angle east,
+  momentum `(520295,106)`, sector `9`, subsector `236`.
+- Runtime `P_MovePlayer/P_Thrust/P_XYMovement` computes every new position.
+  The only collision table has 43 requested x/y inputs, accepted outcomes,
+  sector/subsector relink results, and line/thing iterator counts. Every real
+  MAP01 move accepts; the table has no angle, momentum, state, target, or
+  complete player/actor frames.
+- Python rechecks all 18 monsters after each source-shaped player update.
+  Tics 1-43 produce 774 false results. Tic 44 has exactly one true result:
+  mobj `48`, mapthing `66`, `MT_POSSESSED`, at `(416,176)`, angle 45. The
+  accepted BSP trace is pinned at 85 nodes, 32 subsectors, 113 segs, and 6
+  crossed lines.
+- The contact actor remains `S_POSS_STND/T3`, spawn `lastlook=1`, and
+  `target=NULL`. Stage47 performs no awareness transition, target assignment,
+  run/attack entry, attack action, damage, sound wakeup, or status mutation.
+- Optional `-live` mode retains stage44 `gamekeydown[] -> ticcmd_t` ownership
+  and feeds the same emitted player fields through a deliberately bounded safe
+  start-corridor policy, without adding generalized collision.
+- Rendering selects only four route keyframes `(1,2,32,44)` over three existing
+  source-derived frames, then draws runtime player/contact primitives. No
+  full-frame copy or per-tic player/actor snapshot table is present. The small
+  moving yellow square visible in the executable is this runtime player marker;
+  it is intentional debug geometry, not a continuous Doom renderer yet.
+- Runtime order is player -> visibility -> selected stand-state boundary ->
+  selected projectile -> status -> signatures -> present. Final contact is
+  painted before the final title is installed.
+- Reports `S47SIG=654580656`, `STATE47=1986136589`, final
+  `RSTATE47=394107838`, `ULSTATE47=4253428114`, and `FB47=48847643`; all 44
+  route, unified, and framebuffer signatures are distinct.
+- Preserves `S46SIG=2719909431`, `STATE46=4094043488`, every documented
+  `MSTATE46`, `ULSTATE46`, and `FB46` value, and all stage45-stage19 baselines.
+  Generalized thinkers/pathfinding/collision/rendering, UI, progression,
+  persistence, networking, and audio remain deferred.
+
+Validation:
+
+- `tests/test_source_stage47_bounded_map01_player_route_first_hostile_sight_bridge.py`
+  proves emitted-x86 multi-tic ownership, replay/live command ownership, all
+  collision inputs/outcomes, first-sight minimality across 18 monsters, exact
+  actor/BSP evidence, `target=NULL` stand state, strict update/present order,
+  distinct signatures, finite primitive-only rendering, stage46-stage19
+  preservation, PE32 x86 launch, final paint, and clean close.
+
+## Next Releasable Slice: source_stage48_selected_first_contact_awareness_front_arc_bridge
+
+Output:
+
+```text
+build/source_stage48_selected_first_contact_awareness_front_arc_bridge.exe
+```
+
+Goal:
+
+Turn stage47's geometric contact into the first honest hostile target
+acquisition. Service only the reached zombieman's `S_POSS_STND/STND2` cadence,
+`A_Look`, and `P_LookForPlayers` front-arc/sight gates until it sets the player
+as `target` and enters `S_POSS_RUN1`. Do not assume that visibility means
+awareness and do not force an attack result. This stage is still the right next
+step after stage47 because the first visible actor is not facing the player well
+enough to wake up immediately.
+
+Evidence and implementation shape:
+
+- Start from the candidate's real stage47 state: mobj `48`, mapthing `66`,
+  `MT_POSSESSED`, `S_POSS_STND/T3`, angle `45`, `lastlook=1`, `target=NULL`,
+  and player fixed position `(5560497,-12593285)`. The first honest `A_Look`
+  should happen after the selected stand-state cadence reaches its action
+  boundary, not at the geometric-contact tic itself.
+- Prove the first visible `A_Look/P_LookForPlayers(actor,false)` rejection
+  before looking for an acquisition route. At the stage47 contact point the
+  player is at map `(84.846,-192.158)` while the actor is at `(416,176)`;
+  `R_PointToAngle2(actor, player) - actor->angle` is about `183.03` degrees
+  and Doom `P_AproxDistance` is about `533.74` map units, well beyond
+  `MELEERANGE=64`, so the front-arc gate should reject even though
+  `P_CheckSight` is true.
+- Keep the sound-target shortcut absent unless a previous emitted player/weapon
+  action actually creates the real sector sound target. The normal acquisition
+  path for this slice should be sight plus front-arc success through
+  `P_LookForPlayers`, not a synthetic wakeup.
+- Use Python to find the shortest reproducible continuation that reaches a
+  true `A_Look/P_LookForPlayers` acquisition under real MAP01 collision. Emit
+  and execute that command continuation in x86. If a door/special is genuinely
+  required, reuse the bounded stage19-stage27 use/door blocks instead of
+  inventing pass-through collision or silently expanding this into pathfinding.
+- Add only the selected `S_POSS_STND`, `S_POSS_STND2`, and bounded transition
+  into `S_POSS_RUN1` metadata to the runtime state table. Preserve the stage46
+  SPOS cadence implementation as a baseline, but do not service unrelated
+  monsters.
+- Report each stand tic, `A_Look` dispatch, player-slot iteration, sight result,
+  front-arc result, target assignment, see-state transition, and deferred see
+  sound. Stop before the first `A_Chase` attack decision, hitscan execution,
+  player damage, pain/death, or multi-actor thinker generalization.
+- Keep runtime player/contact markers and finite keyframes; continuous renderer
+  work remains later.
+
+Validation shape:
+
+- Prove the initial visible/front-arc rejection, the minimal acquisition route,
+  exact `target` transition from null to player mobj 0, honest
+  `S_POSS_STND* -> S_POSS_RUN1`, no attack/damage/status change, replay/live
+  ownership, update/present ordering, distinct state/framebuffer signatures,
+  stage47-stage19 preservation, final paint, and clean close.
+
+## Releasable Slice After Next: source_stage49_acquired_target_first_honest_chase_attack_player_feedback_bridge
+
+Output:
+
+```text
+build/source_stage49_acquired_target_first_honest_chase_attack_player_feedback_bridge.exe
+```
+
+Goal:
+
+Start from the stage48 acquired-target state and let the same reached
+zombieman enter its first honest `A_Chase` work from that world state. The
+stage should report the first source-authentic chase/attack result rather than
+manufacturing combat. If the gates naturally reach a hitscan attack, bridge the
+bounded player feedback for that attack; if the honest result is still movement
+or no attack, pin that result and defer damage.
+
+Evidence and implementation shape:
+
+- Preserve the stage48 target transition into `S_POSS_RUN1`, then service only
+  the selected actor's needed `S_POSS_RUN1..RUN8` cadence, `A_Chase`,
+  `P_FaceMobj`, `P_CheckMeleeRange`, `P_CheckMissileRange`, selected
+  `P_Move/P_TryWalk/P_NewChaseDir`, and the first reached attack-state gate.
+- Reuse stage46's selected SPOS chase cadence evidence and stage47/48's real
+  player route state, but remove any remaining table assumption that the actor
+  is chasing a preselected snapshot target. The target must be the runtime
+  player mobj assigned by stage48.
+- If `S_POSS_ATK*` is reached, add only the bounded zombieman hitscan feedback
+  needed for that result: `A_PosAttack`, `P_AimLineAttack/P_LineAttack`
+  evidence, damage/no-damage reason, player health/status mutation if damage
+  truly occurs, and final paint. Do not add generalized combat, pain/death,
+  drops, multi-monster wakeups, or broad blockmap line-attack traversal beyond
+  the proven path.
+- If no attack is reached within the bounded minimal continuation, stop on the
+  honest no-attack/chase-move result with exact reasons and keep the first
+  damage bridge as the next slice. The name may stay combat-oriented, but the
+  test oracle should follow the source outcome.
+
+Validation shape:
+
+- Prove target preservation from stage48, exact first `A_Chase` dispatch,
+  chase/attack gate reasons, selected movement/collision evidence, attack or
+  no-attack player feedback, no unrelated actor awakening, strict
+  player -> selected hostile -> projectile/status/signature -> present order,
+  distinct signatures, stage48-stage19 preservation, final paint, and clean
+  close.
 
 ## Future Backlog
 
-Likely later slices after stage43, intentionally kept mostly as headlines:
+Later slices after stage49, intentionally kept to headlines:
 
-- `source_stage44_bounded_monster_chase_path_and_melee_probe`
-- `source_stage45_player_damage_death_respawn_boundary`
-- `source_stage46_generalized_pickup_weapon_ammo_bridge`
-- `source_stage47_small_map_progression_and_exit_boundary`
-- `source_stage48_demo_determinism_and_input_record_probe`
-- `source_stage49_menu_automap_save_load_shells`
-- `source_stage50_real_audio_device_output_and_mixer_integration`
-- `source_stage51_playable_shareware_style_vertical_slice`
-- `source_stage52_polish_and_playability_stabilization`
+- `source_stage50_bounded_multi_actor_thinker_projectile_collision_integration`
+- `source_stage51_continuous_runtime_camera_bsp_world_sprite_renderer_bridge`
+- `source_stage52_player_survival_death_respawn_boundary`
+- `source_stage53_runtime_pickups_weapons_ammo_inventory_bridge`
+- `source_stage54_doors_switches_exit_and_map_progression_bridge`
+- `source_stage55_hud_menu_automap_save_load_shells`
+- `source_stage56_real_audio_mixer_and_device_output_bridge`
+- `source_stage57_playable_map01_vertical_slice`
+- `source_stage58_playability_stabilization_and_broader_generalization`
 
-At or around that point the fixed render harness should be able to become a
-small playable demo, not just a chain of source-shaped renderer/gameplay
-proofs.
+## Planning Estimate After Stage47
 
-## Planning Estimate After Stage41
+The first deliberately playable emitted MAP01 vertical slice now looks more
+credible around stage57, with stabilization around stage58. That is about 10
+more releasable slices after stage47; a realistic agile range is still 9-14.
+The largest uncertainties are the exact awareness route after the front-arc
+rejection, moving from selected to multiple runtime actors, continuous
+arbitrary-view rendering, and how much of doors/progression/UI/audio must be
+split to remain releasable and testable.
 
-The current roadmap places a playable shareware-style vertical slice at
-`source_stage51` or `source_stage52`, which means roughly 10-11 more releasable
-stages from the stage41 baseline if the next assumptions hold. A realistic
-range is 8-13 more stages: fewer if stage42's unified loop absorbs more of the
-existing selected proofs than expected, more if projectile collision, broad
-sprite traversal, live input, UI shells, or audio integration expose another
-strict source-order boundary that deserves its own runnable proof.
+Coverage estimate:
+
+- The trace manifest references 34 of the 59 C translation units under
+  `src/doom`: about 58% file-touch coverage, plus platform/video/audio support
+  files. File touch is only a breadth signal; one bounded routine does not mean
+  the rest of that translation unit has been processed.
+- Roughly 42-47% of the classic source behavior relevant to a single-player
+  MAP01-style loop has now been read, traced, or exercised in a meaningful
+  bounded slice. This includes setup, BSP/render primitives, player input and
+  collision, selected specials, status/weapon feedback, selected monsters,
+  sight/chase movement, projectile movement, geometric first contact, and
+  present ordering.
+- The behavior actually emitted as reusable runtime-owned x86 is lower,
+  approximately 24-29% of the eventual single-player loop. Stage47 improved
+  this number because player route ownership is now multi-tic emitted x86 state
+  instead of a tiny loaded snapshot prefix. Major gaps remain: awareness,
+  honest attack feedback in the reached world, multiple actors, continuous
+  rendering, complete survival/inventory, progression, UI, persistence, and
+  audio.
+- Fitting blocks into a game loop has already begun. Stage42 established one
+  update/render/status/present controller; stage43 inserted a moving projectile;
+  stage44 made player commands live/replay-owned; stage45 inserted a hostile
+  decision; stage46 made that selected hostile cadence repeatable; and stage47
+  connected a real emitted player route to geometric hostile sight. This is
+  structurally a game loop now, but still a narrow proof loop.
+- Stages48-49 finish the first-contact assembly phase: hostile awareness, then
+  the first honest chase/attack/no-attack result from that same reached world.
+  Stage50 is the point where fitting emitted blocks together should become a
+  real integration task rather than a sequence of selected probes, because
+  multiple runtime actors and projectile/collision feedback need to coexist in
+  the same loop. Continuous visual playability follows with stage51, while the
+  first deliberately playable bounded MAP01 build remains targeted around
+  stage57.

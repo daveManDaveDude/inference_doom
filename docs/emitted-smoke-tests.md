@@ -2545,3 +2545,222 @@ health/armor/ammo/weapon/message evidence including `HP41=100->91`,
 `UPD41=3`, `PAINT41=3`, `PAF41=1`, preserved stage40/stage39 present evidence
 and baselines through `S19SIG=2088411722`, no copied full-frame status motion,
 and no `source_stage42` strings in the executable.
+
+## Source Stage42 Unified Live Tick Render Loop Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage42_unified_live_tick_render_loop_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage42_unified_live_tick_render_loop_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage42_unified_live_tick_render_loop_probe.SourceStage42UnifiedLiveTickRenderLoopProbeTests.test_smoke_executable_launches_reports_unified_samples_paints_and_closes
+```
+
+Stage42 preserves stage41 compact status feedback, stage40 selected
+world-vissprite rendering, stage39 projectile state, and the stage38 present
+bridge, then advances them under one deterministic selected tick/render replay
+controller. The smoke must see distinct `FB42=` and `ULSTATE42=` values,
+`STATE42=2148021159`, `S42SIG=2427416971`, deterministic ticcmd evidence,
+selected player/weapon/status progression, selected `MT_TROOPSHOT` projectile
+state, present evidence `INV42=3`, `UPD42=3`, `PAINT42=3`, `PAF42=1`,
+preserved stage41/stage40/stage39 evidence and baselines through
+`S19SIG=2088411722`, no copied full-frame unified-loop motion, no live input or
+generalized managers, and no `source_stage43` strings in the executable.
+
+## Source Stage43 Bounded Projectile Tick Collision Feedback Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage43_bounded_projectile_tick_collision_feedback_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage43_bounded_projectile_tick_collision_feedback_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage43_bounded_projectile_tick_collision_feedback_probe.SourceStage43BoundedProjectileTickCollisionFeedbackProbeTests.test_smoke_executable_launches_reports_projectile_ticks_paints_and_closes
+```
+
+Stage43 preserves the stage42 unified loop, stage41 compact status feedback,
+stage40 selected BAL1 world-vissprite path, and stage39 selected
+`MT_TROOPSHOT` spawn/state evidence, then advances the selected missile through
+one bounded source-shaped thinker/TryMove proof. The smoke must see distinct
+`FB43=`, `PSTATE43=`, and `ULSTATE43=` values, `STATE43=801364352`,
+`S43SIG=2916740242`, selected missile evidence `MISS43=MT_TROOPSHOT`,
+`S_TBALL1->S_TBALL2`, `PX43=1350`, `PY43=-444`, `TICS43=3->2`, bounded
+TryMove/check/source-skip evidence `TRY43=1:1`, `CHK43=1:1`, `SRC_SKIP43=1`,
+explicit no-collision/no-damage evidence `NOCOLL43=1`, `NODMG43=1`, preserved
+`PATCH40=BAL1`, present evidence `INV43=3`, `UPD43=3`, `PAINT43=3`,
+`PAF43=1`, preserved stage42/stage41/stage40/stage39 evidence and baselines
+through `S19SIG=2088411722`, no copied full-frame projectile motion, no
+deferred generalized collision/projectile systems, and no `source_stage44`
+strings in the executable.
+
+## Source Stage44 Live Ticcmd Unified Player Render Loop Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage44_live_ticcmd_unified_player_render_loop_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage44_live_ticcmd_unified_player_render_loop_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage44_live_ticcmd_unified_player_render_loop_bridge.SourceStage44LiveTiccmdUnifiedPlayerRenderLoopBridgeTests.test_smoke_launch_reports_stage44_final_replay_title_and_closes
+```
+
+Stage44 preserves the stage43 unified projectile/status/present path and
+reintroduces the stage28 bounded live-input bridge. Default replay must report
+`LIVE44=0`, replay-owned command samples, selected player/view mutation,
+finite redraw route evidence `RSEL44=2/3`, `ROUTE44=bounded3`, `FREE44=0`,
+and final-state signatures `STATE44=904132091`, `S44SIG=1090523498`,
+`PVSTATE44=2418604776`, `ULSTATE44=1194642191`, and `FB44=2958912480`.
+The GUI smoke must also see preserved projectile/status evidence
+`MISS43=MT_TROOPSHOT`, `PSTATE43=467194799`, `PATCH40=BAL1`, stable present
+evidence `INV44=3`, `UPD44=3`, `PAINT44=3`, `PAF44=1`, preserved stage43
+through stage19 signatures, `NOFULL44=1`, `BAL144=1`, and `S45ABS=1`.
+Synthetic tests in the same module prove live keydown/keyup transitions feed
+the same `gamekeydown[]`/`ticcmd_t` tables, replay ignores live keys, runtime
+primitive tables generate visual/state changes, and the executable contains no
+`source_stage45` strings.
+
+## Source Stage45 Bounded Monster Chase Path Attack Decision Probe
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage45_bounded_monster_chase_path_attack_decision_probe.py
+```
+
+Expected output:
+
+```text
+build/source_stage45_bounded_monster_chase_path_attack_decision_probe.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage45_bounded_monster_chase_path_attack_decision_probe.SourceStage45BoundedMonsterChasePathAttackDecisionProbeTests.test_smoke_launch_reports_stage45_decision_paints_and_closes
+```
+
+The final title must report `STEP45=3`, selected actor evidence
+`ACT45=28/37:MT_SHOTGUY`, and the final `S_SPOS_RUN2/T1` state. The exact first
+decision is preserved in the executable as `SIGHT45=0:BSP1/N8/SS1/SEG1/X1`,
+`MELEE45=0:0`, `MISSILE45=1:0`, `MOVE45=3:1:2`,
+`BRANCH45=SIGHT_FAILED_NO_ATTACK_CHASE_ACCEPTED`, `ATTACK45=0`, and `DMG45=0`.
+No damage/status mutation occurs because the BSP sight result rejects the
+missile branch and the shotgun guy has no melee state.
+
+The smoke also verifies final signatures `S45SIG=799763036`,
+`STATE45=1707493859`, `MSTATE45=802996254`, `ULSTATE45=4107409497`, and
+`FB45=4149793188`; preserved stage44 live/replay evidence
+`S44SIG=1090523498`; stage43 `MISS43=MT_TROOPSHOT`; stage40 `PATCH40=BAL1`;
+all stage43-stage19 signatures; primitive-only visual changes; present evidence
+`INV45=3`, `UPD45=3`, `PAINT45=3`, `PAF45=1`; and `S46ABS=1`. The executable
+must contain no `source_stage46` strings.
+
+## Source Stage46 Repeatable Selected Monster Thinker Cadence Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage46_repeatable_selected_monster_thinker_cadence_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage46_repeatable_selected_monster_thinker_cadence_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage46_repeatable_selected_monster_thinker_cadence_bridge.SourceStage46RepeatableSelectedMonsterThinkerCadenceBridgeTests.test_smoke_launch_reaches_final_paint_and_closes_cleanly
+```
+
+The final title must reach `STEP46=7` and report
+`AST46=S_SPOS_RUN3/T1->S_SPOS_RUN4/T3`, `NOMISSILE46=1`,
+`MOVE46=1:1:0`, `ATTACK46=0`, `DMG46=0`, and
+`WHY46=SIGHT_BLOCKED_OR_NONZERO_MOVECOUNT`. Tic-4 evidence embedded in the
+executable must report `AST46=S_SPOS_RUN2/T1->S_SPOS_RUN3/T3`,
+`MOVE46=6:1:5`, the current-direction block, four further blocked new-direction
+attempts, and accepted direction 7.
+
+The smoke verifies emitted-x86 ownership (`OWN46=x86`, `ONCE46=1`), ordering
+`ORDER46=P-M-PRJ-ST-SIG-PRESENT`, final paint `PAF46=1`,
+`S46SIG=2719909431`, `STATE46=4094043488`, final
+`MSTATE46=533767476`, `ULSTATE46=3637274982`, and `FB46=3905320152`.
+It also verifies stage45 `S45SIG=799763036` / `STATE45=1707493859`, stage44
+replay/live ownership, stage43 `MISS43=MT_TROOPSHOT`, stage40 `PATCH40=BAL1`,
+all baselines through `S19SIG=2088411722`, primitive-only redraw, no complete
+actor-frame table, no full-frame copy, clean close, and absence of the next
+stage marker from the executable.
+
+## Source Stage47 Bounded MAP01 Player Route First Hostile Sight Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage47_bounded_map01_player_route_first_hostile_sight_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage47_bounded_map01_player_route_first_hostile_sight_bridge.exe
+```
+
+Visual note: during the short replay, a small yellow square moves for a few
+samples. That is the intended runtime-owned player marker drawn by the bounded
+`V_DrawFilledBox` primitive over finite source-derived keyframes. It is not
+intended to be the final continuous Doom renderer.
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage47_bounded_map01_player_route_first_hostile_sight_bridge.SourceStage47BoundedMap01PlayerRouteFirstHostileSightBridgeTests.test_00_smoke_launch_reaches_final_contact_paint_and_closes_cleanly
+```
+
+The final title must reach `STEP47=44 TIC47=44 OWN47=x86` and report player
+state `PXY47=84,-193`, `PA47=0`, `PMOM47=520295,106`, and
+`PSEC47=9/236`. Real route evidence is `COLL47=43:43:0`, `REALMAP47=1`,
+`FIRST47=44/44`, `MIN47=774:0`, and `ALLMON47=18`.
+
+The sole contact must be `ACT47=48/66:MT_POSSESSED@416,176/A45` with
+`SIGHT47=1:BSP1/N85/SS32/SEG113/X6`. The same title must retain
+`AST47=S_POSS_STND/T3`, `TARGET47=NULL`, `AWARE47=0`, `ATTACK47=0`,
+`DMG47=0`, and `STATUSMUT47=0`; sight alone is not hostile awareness.
+
+The smoke also verifies final signatures `RSTATE47=394107838`,
+`ULSTATE47=4253428114`, `FB47=48847643`, `STATE47=1986136589`, and
+`S47SIG=654580656`; order `ORDER47=P-V-M-PRJ-ST-SIG-PRESENT`; final paint
+`PAF47=1`; collision evidence match `MISMATCH47=0`; finite keyframes and
+primitive-only redraw; exact stage46-stage19 preservation; PE32 x86 launch;
+and clean close. A companion synthetic test proves that stage44 live
+`gamekeydown[]` fields build the command consumed by the same emitted stage47
+player path; the executable also retains explicit `LIVE44=1` ownership status.
