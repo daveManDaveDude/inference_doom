@@ -55,16 +55,17 @@ smaller or differently ordered step would be more honest.
 5. Keep the released debug stages as proofs, but do not build the next phase by
    piling more special cases into them.
 
-## Current Baseline: source_stage47_bounded_map01_player_route_first_hostile_sight_bridge
+## Current Baseline: source_stage48_selected_first_contact_awareness_front_arc_bridge
 
-The current PE32 baseline now owns a real 44-tic MAP01 player route in emitted
-x86. Stage47 mutates player x/y, angle, momentum, sector, and subsector through
-bounded source-shaped movement/collision evidence, checks all 18 monsters, and
-stops at the earliest geometric sight result. The contact remains a null-target
-stand-state actor: hostile awareness, combat, and broad runtime managers remain
-deferred. Rendering still uses finite source-derived views plus runtime
-primitives, and the selected projectile/status/signature/Win32 present order is
-preserved.
+The current PE32 baseline starts from stage47's first geometric MAP01 contact
+and turns it into the first honest selected-hostile awareness transition.
+Stage48 owns the selected zombieman's `S_POSS_STND/STND2` tic cadence,
+dispatches real `A_Look` boundaries, proves the initial sight/front-arc
+rejection, follows a 63-tic collision-valid player continuation, assigns
+`target=NULL -> player mobj 0`, and installs `S_POSS_RUN1/T4`. The see sound
+and first `A_Chase` work are explicit deferred boundaries; attacks, damage,
+status mutation, broad thinkers/pathfinding/collision/rendering, UI,
+progression, persistence, networking, and audio remain deferred.
 
 The source-guided line now covers WAD/map setup, BSP setup structures,
 source-ordered BSP traversal, Doom-shaped bbox/frustum visibility, and live
@@ -5040,7 +5041,7 @@ Validation:
   distinct signatures, finite primitive-only rendering, stage46-stage19
   preservation, PE32 x86 launch, final paint, and clean close.
 
-## Next Releasable Slice: source_stage48_selected_first_contact_awareness_front_arc_bridge
+## Released Slice: source_stage48_selected_first_contact_awareness_front_arc_bridge
 
 Output:
 
@@ -5048,59 +5049,53 @@ Output:
 build/source_stage48_selected_first_contact_awareness_front_arc_bridge.exe
 ```
 
-Goal:
+Released result:
 
-Turn stage47's geometric contact into the first honest hostile target
-acquisition. Service only the reached zombieman's `S_POSS_STND/STND2` cadence,
-`A_Look`, and `P_LookForPlayers` front-arc/sight gates until it sets the player
-as `target` and enters `S_POSS_RUN1`. Do not assume that visibility means
-awareness and do not force an attack result. This stage is still the right next
-step after stage47 because the first visible actor is not facing the player well
-enough to wake up immediately.
-
-Evidence and implementation shape:
-
-- Start from the candidate's real stage47 state: mobj `48`, mapthing `66`,
+- Starts from the exact stage47 contact: mobj `48`, mapthing `66`,
   `MT_POSSESSED`, `S_POSS_STND/T3`, angle `45`, `lastlook=1`, `target=NULL`,
-  and player fixed position `(5560497,-12593285)`. The first honest `A_Look`
-  should happen after the selected stand-state cadence reaches its action
-  boundary, not at the geometric-contact tic itself.
-- Prove the first visible `A_Look/P_LookForPlayers(actor,false)` rejection
-  before looking for an acquisition route. At the stage47 contact point the
-  player is at map `(84.846,-192.158)` while the actor is at `(416,176)`;
-  `R_PointToAngle2(actor, player) - actor->angle` is about `183.03` degrees
-  and Doom `P_AproxDistance` is about `533.74` map units, well beyond
-  `MELEERANGE=64`, so the front-arc gate should reject even though
-  `P_CheckSight` is true.
-- Keep the sound-target shortcut absent unless a previous emitted player/weapon
-  action actually creates the real sector sound target. The normal acquisition
-  path for this slice should be sight plus front-arc success through
-  `P_LookForPlayers`, not a synthetic wakeup.
-- Use Python to find the shortest reproducible continuation that reaches a
-  true `A_Look/P_LookForPlayers` acquisition under real MAP01 collision. Emit
-  and execute that command continuation in x86. If a door/special is genuinely
-  required, reuse the bounded stage19-stage27 use/door blocks instead of
-  inventing pass-through collision or silently expanding this into pathfinding.
-- Add only the selected `S_POSS_STND`, `S_POSS_STND2`, and bounded transition
-  into `S_POSS_RUN1` metadata to the runtime state table. Preserve the stage46
-  SPOS cadence implementation as a baseline, but do not service unrelated
-  monsters.
-- Report each stand tic, `A_Look` dispatch, player-slot iteration, sight result,
-  front-arc result, target assignment, see-state transition, and deferred see
-  sound. Stop before the first `A_Chase` attack decision, hitscan execution,
-  player damage, pain/death, or multi-actor thinker generalization.
-- Keep runtime player/contact markers and finite keyframes; continuous renderer
-  work remains later.
+  and player fixed position `(5560497,-12593285)`.
+- The contact point remains sight-visible but awareness-rejected:
+  `P_CheckSight` is true with trace `N85/SS32/SEG113/X6`, while
+  `R_PointToAngle2(actor, player)-actor->angle` is about `183.03` degrees and
+  `P_AproxDistance` is greater than `MELEERANGE=64`.
+- The first stand action boundary at continuation tic 3 dispatches `A_Look`,
+  iterates slots `1,2,3,0`, and stops without checking player 0 because of the
+  real `lastlook=1` stop-slot rule. The first checked `A_Look`, at tic 13,
+  sees player 0 twice and rejects both checks on the rear front-arc gate.
+- The bounded selected continuation is 63 tics: 21 copies of
+  `(forwardmove=25, sidemove=0, angleturn=640, buttons=0)` followed by 42
+  copies of `(25,0,0,0)`. It includes a bounded player-only `P_ZMovement`
+  landing step, remains collision-valid, and reaches acquisition at tic 63.
+- The acquisition is source-authentic and slightly unglamorous: the player is
+  still outside the strict front arc, but is within Doom's close-range
+  exception (`distance ~= 57.46` map units), so `P_LookForPlayers` assigns
+  `target=NULL -> player mobj 0`.
+- Runtime x86 owns player continuation state and selected actor stand cadence.
+  Python emits only command input, collision input/outcome evidence, selected
+  sight/front-arc outcomes, signatures, and finite keyframe data.
+- `A_Look` installs `S_POSS_RUN1/T4` and defers the see sound and first
+  `A_Chase` dispatch. No attack decision, hitscan, damage, pain/death, status
+  mutation, multi-actor thinker generalization, generalized pathfinding,
+  generalized collision, generalized rendering, UI, progression, persistence,
+  networking, or audio is introduced.
+- Reports `S48SIG=1847800974`, `STATE48=944776482`, final
+  `ASTATE48=2179569613`, `ULSTATE48=2022082875`, and `FB48=4057594050`.
+- Preserves `S47SIG=654580656`, `STATE47=1986136589`,
+  `RSTATE47=394107838`, `ULSTATE47=4253428114`, `FB47=48847643`, the stage46
+  baselines, and every documented stage45-stage19 baseline.
 
-Validation shape:
+Validation:
 
-- Prove the initial visible/front-arc rejection, the minimal acquisition route,
-  exact `target` transition from null to player mobj 0, honest
-  `S_POSS_STND* -> S_POSS_RUN1`, no attack/damage/status change, replay/live
-  ownership, update/present ordering, distinct state/framebuffer signatures,
-  stage47-stage19 preservation, final paint, and clean close.
+- `tests/test_source_stage48_selected_first_contact_awareness_front_arc_bridge.py`
+  proves runtime multi-tic mutation, replay/live ownership, collision-valid
+  continuation, initial sight/front-arc rejection, the bounded minimal route,
+  exact actor/sight/front-arc evidence, `target=NULL -> player mobj 0`, honest
+  `S_POSS_STND/STND2 -> S_POSS_RUN1`, no attack/damage/status mutation,
+  ordering, distinct signatures, stage47-stage19 preservation, absence of
+  snapshots/full-frame copies/broad systems/future markers, PE32 launch, final
+  paint, and clean close.
 
-## Releasable Slice After Next: source_stage49_acquired_target_first_honest_chase_attack_player_feedback_bridge
+## Next Releasable Slice: source_stage49_acquired_target_first_honest_chase_attack_player_feedback_bridge
 
 Output:
 

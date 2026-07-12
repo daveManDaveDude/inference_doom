@@ -2764,3 +2764,44 @@ primitive-only redraw; exact stage46-stage19 preservation; PE32 x86 launch;
 and clean close. A companion synthetic test proves that stage44 live
 `gamekeydown[]` fields build the command consumed by the same emitted stage47
 player path; the executable also retains explicit `LIVE44=1` ownership status.
+
+## Source Stage48 Selected First Contact Awareness Front Arc Bridge
+
+Build the executable from the repository root:
+
+```powershell
+py -3 .\tools\emit_source_stage48_selected_first_contact_awareness_front_arc_bridge.py
+```
+
+Expected output:
+
+```text
+build/source_stage48_selected_first_contact_awareness_front_arc_bridge.exe
+```
+
+Scripted smoke test:
+
+```powershell
+py -3 -B -m unittest tests.test_source_stage48_selected_first_contact_awareness_front_arc_bridge.SourceStage48SelectedFirstContactAwarenessFrontArcBridgeTests.test_00_smoke_launch_reaches_final_acquisition_paint_and_closes_cleanly
+```
+
+The final title must reach `STEP48=63 TIC48=107 OWN48=x86` and report
+`ROUTE48=21xF25A640+42xF25A0`, `MIN48=63`, player position
+`PXY48=414,119`, `PZ48=-64/-64`, and actor transition
+`AST48=S_POSS_STND/T3->S_POSS_RUN1/T4`.
+
+The smoke verifies the selected awareness evidence:
+`LOOK48=7`, `SLOT48=1,2,3,0`, first checked rejection
+`REJ48=SIGHT1:FRONT0`, final acquisition `ACQ48=SIGHT1:FRONT1:CLOSE1`,
+`TARGET48=NULL->P0`, deferred see sound and chase markers, and
+`ATTACK48=0`, `DMG48=0`, `STATUSMUT48=0`.
+
+The smoke also verifies final signatures `ASTATE48=2179569613`,
+`ULSTATE48=2022082875`, `FB48=4057594050`, `STATE48=944776482`, and
+`S48SIG=1847800974`; preserved stage47 evidence
+`S47SIG=654580656`, `STATE47=1986136589`, `RSTATE47=394107838`,
+`ULSTATE47=4253428114`, and `FB47=48847643`; ordering
+`ORDER48=P-A-PRJ-ST-SIG-PRESENT`; final paint `PAF48=1`; collision evidence
+match `MISMATCH48=0`; finite keyframes and primitive-only redraw; exact
+stage47-stage19 preservation; PE32 x86 launch; clean close; and absence of
+the next-stage marker from the executable.
